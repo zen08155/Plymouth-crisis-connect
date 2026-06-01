@@ -4,7 +4,7 @@ A simple React homepage built with Vite.
 
 ## Run locally
 
-```bash
+```bash 
 npm install
 npm run dev
 ```
