@@ -10,6 +10,17 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 
+# Local environment files
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.pyc
+.pytest_cache/
+.venv/
+
 # OS/editor files
 .DS_Store
 .vscode/
