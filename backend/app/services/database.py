@@ -1,5 +1,6 @@
+from typing import Any
 class Database:
-    def execute(self, query : str, params: tuple = ()):
+    def execute(self, query : str, params: tuple = ()) -> Any:
         """Wrapper for database, made so code isn't dependent on it
 
         Args:
@@ -7,6 +8,7 @@ class Database:
             params (tuple, optional): Params to replace the placeholders with. Defaults to ().
 
         TODO: Implement db thingie
-        FIXME: flexible return type?
+        Returns:
+            Any: just forwards return of the actual db response
         """
         raise Exception("db not implemented")

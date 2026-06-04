@@ -27,7 +27,7 @@ class UserAccount:
                  VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?)"""
         
         try:
-            #TODO: Check if insert returns bool when wrapped
+            #TODO: Verify if insert returns bool when wrapped
             if self.db.execute(sql, (user.name, user.surname, user.email, user.role, user.phone, user.dob, user.created_at, user.updated_at, user.is_active)): 
                 return True
             else: 
@@ -52,14 +52,14 @@ class UserAccount:
         sql = f"SELECT Password FROM users WHERE email = ?"
 
         try:
-            hashed_pass = self.db.execute(sql(email)) #TODO: Check if returns stuff
+            hashed_pass = self.db.execute(sql(email)) #TODO: Verify if returns arrays
 
             if bcrypt.checkpw(password.encode(), hashed_pass) :
                 sql_id = f"SELECT * FROM users WHERE email = ?"
                 user_data = self.db.execute(sql_id, (email));
 
                 #TODO: turn user_data into an User object
-                return User(...)
+                return User()
             else:
                 print("User not found.")
                 return None
