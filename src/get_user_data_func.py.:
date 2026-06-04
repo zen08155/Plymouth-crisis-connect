@@ -1,0 +1,44 @@
+db = {
+
+    "users": {
+        1: {
+            "name": "Alice",
+            "email": "alice@example.com",
+            "current_project_id": 101
+        },
+        2: {
+            "name": "Bob",
+            "email": "bob@example.com",
+            "current_project_id": 102
+        }
+    },
+
+    "projects": {
+        101: {
+            "name": "Website Redesign",
+            "status": "In Progress",
+            "progress": 65
+        },
+        102: {
+            "name": "Mobile App",
+            "status": "Planning",
+            "progress": 10
+        }
+    }
+}
+def get_project_data(current_project_id):
+    projectdata = db["projects"].get(current_project_id)
+    if current_project_id not in db["projects"]:
+        return "Project not found"
+    else:
+        return projectdata 
+
+user_id = 1
+def get_user_info(user_id):
+    user = db["users"].get(user_id)
+    if user_id not in db["users"]:
+        return "User not found" 
+    else:
+        return get_project_data(user["current_project_id"])
+
+print(get_user_info(user_id))
