@@ -1,0 +1,10 @@
+node_modules
+dist
+.env
+.env.local
+.DS_Store
+npm-debug.log
+__pycache__
+.pytest_cache
+.venv
+*.pyc
