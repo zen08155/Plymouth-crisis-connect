@@ -53,7 +53,7 @@ class UserAccount:
         try:
             conn = Database.get_connection()
             cursor = conn.cursor(dictionary=True)
-            cursor.execute(sql_pw, (email,)) #TODO: Verify if works
+            cursor.execute(sql_pw, (email,))
 
             row = cursor.fetchone()
 
