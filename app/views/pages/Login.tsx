@@ -1,12 +1,13 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
+import Logo from '../components/Logo';
 
 export default function Login() {
   const navigate = useNavigate();
 
   return (
     <div className="login-page">
-      <div className="login-logo">LOGO</div>
+      <div className="login-logo"><Logo height={38} /></div>
 
       <div className="login-card">
 
