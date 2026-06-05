@@ -1,6 +1,6 @@
 import bcrypt
 from database.database_connection import Database
-from models.user2 import User
+from models.user_data import UserData
 from datetime import date
 from typing import Optional
 
@@ -17,7 +17,7 @@ class UserAccount:
         salt = bcrypt.gensalt()
         hashed_pw = bcrypt.hashpw(pw, salt) 
 
-        user = User(hashed_pw, firstname, surname, email, phone_nr, birthday, role, status)
+        user = UserData(hashed_pw, firstname, surname, email, phone_nr, birthday, role, status)
 
         sql = f"""INSERT INTO users (password, name, surname, email, role, status, phoneNumber, birthday, createdAt, updatedAt, isActive, avgResponseTimeMins, pushNotifications)
                  VALUES(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)"""
@@ -37,7 +37,7 @@ class UserAccount:
         finally:
             conn.close()
 
-    def log_in(self, email : str, password : str) -> Optional[User] :
+    def log_in(self, email : str, password : str) -> Optional[UserData] :
         """Log in user using email and password
 
         Args:
@@ -67,7 +67,7 @@ class UserAccount:
                 row = cursor.fetchone()
                
                 
-                return User(hashed_password=row["password"],
+                return UserData(hashed_password=row["password"],
                             name=row["name"],
                             surname=row["surname"],
                             email=row["email"],

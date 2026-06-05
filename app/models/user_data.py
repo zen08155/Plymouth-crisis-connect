@@ -3,7 +3,7 @@ import bcrypt
 import re #TODO: use for verifying email format
 
     
-class User:
+class UserData:
     """
     Data object, storing user-account data
     """
