@@ -25,7 +25,6 @@ class UserData:
                  id : int = None
                  
                  ):
-        self.user_id = None
         self.password = hashed_password
         self.name = name
         self.surname = surname
