@@ -1,6 +1,6 @@
 from datetime import datetime, date 
 import bcrypt
-import re
+import re #TODO: use for verifying email format
 
     
 class User:
@@ -14,12 +14,14 @@ class User:
                  surname: str, 
                  email: str, 
                  phone_number: str,
-                 date_of_birth : date,
+                 birthday : date,
                  role: str,
                  created_at: datetime = None,
                  updated_at: datetime = None,
                  is_active: bool = True,
-                 avg_response_time : datetime = None
+                 avg_response_time : datetime = None,
+                 push_notifications : bool = False
+                 
                  ):
         self.user_id = None
         self.password = hashed_password
@@ -27,11 +29,12 @@ class User:
         self.surname = surname
         self.email = email
         self.phone = phone_number
-        self.date_of_birth = date_of_birth
+        self.birthday = birthday
         self.role = role
         self.created_at = created_at or datetime.now
         self.updated_at = updated_at or datetime.now
         self.response_time = avg_response_time or None
+        self.push_notifications_enabled = push_notifications
 
     def __touch(self):
         """Updates updated_at to current time"""
@@ -65,8 +68,8 @@ class User:
         self.email = new_email
         self.__touch()
 
-    def update_dob(self, new_dob : date):
-        self.date_of_birth = new_dob
+    def update_bd(self, new_dob : date):
+        self.birthday = new_dob
         self.__touch()
 
     def update_phone(self, new_phone_number: int):
@@ -84,6 +87,16 @@ class User:
     def activate(self):
         self.is_active = True
         self.__touch()
+
+    def enable_push_notifications(self):
+        self.push_notifications_enabled = True
+        self.__touch()
+
+    def disable_push_notifications(self):
+        self.push_notifications_enabled = False
+        self.__touch()
+
+        
         
     #endregion
     

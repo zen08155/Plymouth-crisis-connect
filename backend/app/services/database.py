@@ -1,14 +1,24 @@
-from typing import Any
+import mysql.connector
+import os
+
 class Database:
-    def execute(self, query : str, params: tuple = ()) -> Any:
-        """Wrapper for database, made so code isn't dependent on it
+    """Singleton database connection
 
-        Args:
-            query (str): query to be executed
-            params (tuple, optional): Params to replace the placeholders with. Defaults to ().
+    Returns:
+        PDO: Returns the existing db connection, or creates it if it doesn't exist yet
+    """
+    _connection = None
 
-        TODO: Implement db thingie
-        Returns:
-            Any: just forwards return of the actual db response
-        """
-        raise Exception("db not implemented")
+    @classmethod
+    def get_connection(cls):
+        if cls._connection is None:
+            cls._connection = mysql.connector.connect(
+                host=os.getenv("DB_HOST"),
+                user=os.getenv("DB_USER"),
+                password=os.getenv("DB_PASSWORD"),
+                database=os.getenv("DB_NAME")
+            )
+
+        return cls._connection
+    
+    
