@@ -35,7 +35,7 @@ class UserAccount:
             return False   
         
         finally:
-            conn.close()
+            if conn: conn.close()
 
     def log_in(self, email : str, password : str) -> Optional[UserData] :
         """Log in user using email and password
@@ -91,4 +91,4 @@ class UserAccount:
             return None
         
         finally:
-            conn.close()
+            if conn: conn.close()
