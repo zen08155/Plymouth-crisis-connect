@@ -8,13 +8,11 @@ class UserAccount:
     def __init__(self):
         pass
 
-    def create_account(self, firstname: str, surname: str, password: str, email: str, phone_nr: str, birthday : date, role: str = "volunteer", status = "available"):
+    def create_account(self, firstname: str, surname: str, password: str, email: str, phone_nr: str, birthday : date, role: str = "volunteer", status = "available") -> bool:
         """Create a new user account and insert into DB
 
         Default role is 'volunteer' if no role is provided.
-        dob (datetime.date): date of birth
         """
-
         pw = password.encode()
         salt = bcrypt.gensalt()
         hashed_pw = bcrypt.hashpw(pw, salt) 
@@ -27,12 +25,9 @@ class UserAccount:
         try:
             conn = Database.get_connection()
             cursor = conn.cursor()
-            #TODO: Verify if insert returns bool when wrapped
             cursor.execute(sql, (user.password, user.name, user.surname, user.email, user.role, user.status, user.phone, user.birthday, user.created_at, user.updated_at, user.is_active, user.avg_response_time, user.push_notifications_enabled))
             conn.commit()
             return True
-    
-                
             
         except Exception as e:
             print(e) 
