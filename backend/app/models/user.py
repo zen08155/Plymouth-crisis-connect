@@ -16,6 +16,7 @@ class User:
                  phone_number: str,
                  birthday : date,
                  role: str,
+                 status: str,
                  created_at: datetime = None,
                  updated_at: datetime = None,
                  is_active: bool = True,
@@ -32,10 +33,12 @@ class User:
         self.phone = phone_number
         self.birthday = birthday
         self.role = role
-        self.created_at = created_at or datetime.now
-        self.updated_at = updated_at or datetime.now
-        self.response_time = avg_response_time or None
+        self.created_at = created_at or datetime.now()
+        self.updated_at = updated_at or datetime.now()
+        self.is_active = is_active
+        self.avg_response_time = avg_response_time or None
         self.push_notifications_enabled = push_notifications
+        self.status = status
         self.id = id or None
 
     def __touch(self):

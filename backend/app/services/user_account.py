@@ -1,5 +1,5 @@
 import bcrypt
-from backend.app.core.database_connection import Database
+from core.database_connection import Database
 from models.user import User
 from datetime import date
 from typing import Optional
@@ -8,7 +8,7 @@ class UserAccount:
     def __init__(self):
         pass
 
-    def create_account(self, firstname: str, surname: str, password: str, email: str, phone_nr: str, birthday : date, role: str = "volunteer"):
+    def create_account(self, firstname: str, surname: str, password: str, email: str, phone_nr: str, birthday : date, role: str = "volunteer", status = "available"):
         """Create a new user account and insert into DB
 
         Default role is 'volunteer' if no role is provided.
@@ -19,22 +19,24 @@ class UserAccount:
         salt = bcrypt.gensalt()
         hashed_pw = bcrypt.hashpw(pw, salt) 
 
-        user = User(hashed_pw, firstname, surname, email, phone_nr, birthday, role)
+        user = User(hashed_pw, firstname, surname, email, phone_nr, birthday, role, status)
 
-        sql = f"""INSERT INTO users (name, surname, email, role, phoneNumber, birthday, createdAt, updatedAt, isActive)
-                 VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?)"""
+        sql = f"""INSERT INTO users (password, name, surname, email, role, status, phoneNumber, birthday, createdAt, updatedAt, isActive, avgResponseTimeMins, pushNotifications)
+                 VALUES(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)"""
 
         try:
             conn = Database.get_connection()
             cursor = conn.cursor()
             #TODO: Verify if insert returns bool when wrapped
-            if cursor.execute(sql, (user.name, user.surname, user.email, user.role, user.phone, user.birthday, user.created_at, user.updated_at, user.is_active)): 
-                return True
-            else: 
-                return False
+            cursor.execute(sql, (user.password, user.name, user.surname, user.email, user.role, user.status, user.phone, user.birthday, user.created_at, user.updated_at, user.is_active, user.avg_response_time, user.push_notifications_enabled))
+            conn.commit()
+            return True
+    
+                
             
         except Exception as e:
             print(e) 
+            conn.rollback()
             return False   
         
         finally:
@@ -50,19 +52,25 @@ class UserAccount:
         Returns:
             Optional[User]: Returns an User object if login succeeds, otherwise None.
         """
-        sql_pw = f"SELECT Password FROM users WHERE email = ?"
-        sql_id = f"SELECT * FROM users WHERE email = ?"
+        sql_pw = f"SELECT password FROM users WHERE email = %s"
+        sql_id = f"SELECT * FROM users WHERE email = %s"
 
         try:
             conn = Database.get_connection()
-            cursor = conn.cursor()
-            cursor.execute(sql_pw, (email)) #TODO: Verify if works
+            cursor = conn.cursor(dictionary=True)
+            cursor.execute(sql_pw, (email,)) #TODO: Verify if works
 
-            pw_b = cursor.fetchone()["password"].encode()
+            row = cursor.fetchone()
 
-            if bcrypt.checkpw(password.encode(), pw_b) :
-                cursor.execute(sql_id, (email))
+            if row is None:
+                return None
+            
+            pw_byte = row["password"].encode()
+
+            if bcrypt.checkpw(password.encode(), pw_byte) :
+                cursor.execute(sql_id, (email,))
                 row = cursor.fetchone()
+               
                 
                 return User(hashed_password=row["password"],
                             name=row["name"],
@@ -76,25 +84,16 @@ class UserAccount:
                             is_active=row["isActive"],
                             avg_response_time=row["avgResponseTimeMins"],
                             push_notifications=row["pushNotifications"],
-                            id=row["userId"]
+                            id=row["userId"],
+                            status=row["status"]
                             )
             else:
                 print("User not found.")
                 return None
                 
         except Exception as e:
-            print(e)
+            print("error: " + str(e))
             return None
         
         finally:
             conn.close()
-        
-            
-            
-
-
-
-
-
-user = UserAccount()
-user.create_account("jenita","zheng", "pw", "email", "123445", date(2005, 1, 31), "volunteer")
