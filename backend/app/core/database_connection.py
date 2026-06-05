@@ -9,6 +9,7 @@ class Database:
     """
     _connection = None
 
+    #FIXME: use real db
     @classmethod
     def get_connection(cls):
         if cls._connection is None:
