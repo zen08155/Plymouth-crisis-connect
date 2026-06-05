@@ -1,9 +1,8 @@
 import bcrypt
-from services.database import Database
+from backend.app.core.database_connection import Database
 from models.user import User
 from datetime import date
 from typing import Optional
-import bcrypt
 
 class UserAccount:
     def __init__(self):
@@ -24,7 +23,7 @@ class UserAccount:
 
         sql = f"""INSERT INTO users (name, surname, email, role, phoneNumber, birthday, createdAt, updatedAt, isActive)
                  VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?)"""
-        
+
         try:
             conn = Database.get_connection()
             cursor = conn.cursor()
@@ -57,9 +56,9 @@ class UserAccount:
         try:
             conn = Database.get_connection()
             cursor = conn.cursor()
-            cursor.execute(sql_pw, (email)) #TODO: Verify if returns arrays
-            pw_str = cursor.fetchone()["password"]
-            pw_b = pw_str.encode()
+            cursor.execute(sql_pw, (email)) #TODO: Verify if works
+
+            pw_b = cursor.fetchone()["password"].encode()
 
             if bcrypt.checkpw(password.encode(), pw_b) :
                 cursor.execute(sql_id, (email))
@@ -76,7 +75,8 @@ class UserAccount:
                             updated_at=row["createdAt"],
                             is_active=row["isActive"],
                             avg_response_time=row["avgResponseTimeMins"],
-                            push_notifications=row["pushNotifications"]
+                            push_notifications=row["pushNotifications"],
+                            id=row["userId"]
                             )
             else:
                 print("User not found.")
@@ -96,3 +96,5 @@ class UserAccount:
 
 
 
+user = UserAccount()
+user.create_account("jenita","zheng", "pw", "email", "123445", date(2005, 1, 31), "volunteer")

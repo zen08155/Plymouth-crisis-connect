@@ -20,7 +20,8 @@ class User:
                  updated_at: datetime = None,
                  is_active: bool = True,
                  avg_response_time : datetime = None,
-                 push_notifications : bool = False
+                 push_notifications : bool = False,
+                 id : int = None
                  
                  ):
         self.user_id = None
@@ -35,6 +36,7 @@ class User:
         self.updated_at = updated_at or datetime.now
         self.response_time = avg_response_time or None
         self.push_notifications_enabled = push_notifications
+        self.id = id or None
 
     def __touch(self):
         """Updates updated_at to current time"""
