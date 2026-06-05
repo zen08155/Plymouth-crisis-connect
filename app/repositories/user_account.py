@@ -1,6 +1,6 @@
 import bcrypt
-from core.database_connection import Database
-from models.user import User
+from database.database_connection import Database
+from models.user2 import User
 from datetime import date
 from typing import Optional
 
