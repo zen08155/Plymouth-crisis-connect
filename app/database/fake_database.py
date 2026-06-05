@@ -68,25 +68,65 @@ database = {
             "User_id": 2,
         }
     ],
+    "Incidents": [
+        {
+            "Incident_id": 101,
+            "Title": "Flood in Sector 7",
+            "Description": "Heavy rainfall causing flooding in residential area.",
+            "Type": "Flood",
+            "Latitude": 40.7128,
+            "Longitude": -74.0060,
+            "Priority": "Urgent",
+            "Volunteers_helped": 5,
+            "Created_at": "2023-10-27 08:00:00",
+            "Created_by": 1,
+            "Ended_at": None,
+            "Ended_by": None,
+            "Is_Project": True,
+            "Project_Name": "Autumn Flood Relief",
+        },
+        {
+            "Incident_id": 102,
+            "Title": "Power Outage",
+            "Description": "Main grid down in downtown.",
+            "Type": "Other",
+            "Latitude": 40.7306,
+            "Longitude": -73.9352,
+            "Priority": "Medium",
+            "Volunteers_helped": 0,
+            "Created_at": "2023-10-27 09:30:00",
+            "Created_by": 1,
+            "Ended_at": "2023-10-27 11:00:00",
+            "Ended_by": 1,
+            "Is_Project": False,
+            "Project_Name": None,
+        },
+    ],
+    "Volunteer_help": [
+        {
+            "id": 1001,
+            "User_id": 2,
+            "Incident_id": 101,
+            "Created_at": "2023-10-27 08:15:00",
+            "Update_at": "2023-10-27 08:15:00",
+            "Ended_at": "2023-10-27 10:00:00",
+            "Response_Time_Seconds": 900,
+        }
+    ],
+    "Team": [
+        {
+            "team_id": 1,
+            "incident_id": 101,
+            "Coordinator_id": 1,
+            "Team_leader_id": 2,
+            "Name": "Flood Response Team A",
+            "Task": "Distribute water and blankets",
+        }
+    ],
+    "Teams_": [
+        {
+            "Team_id": 1,
+            "User_id": 2,
+        }
+    ],
 }
-
-
-def find_user(user_id):
-    return next((user for user in database["Users"] if user["User_id"] == user_id), None)
-
-
-def is_trusted_volunteer(user_id):
-    volunteer_skill_ids = [
-        volunteer_skill["Skills_id"]
-        for volunteer_skill in database["Volunteer_skills"]
-        if volunteer_skill["User_id"] == user_id
-    ]
-
-    for skill in database["Skills"]:
-        if skill["skills_id"] not in volunteer_skill_ids:
-            continue
-
-        if skill["Certified"] == "Yes" and skill["reliability"] == "Trustworthy":
-            return True
-
-    return False
