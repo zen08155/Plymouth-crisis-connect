@@ -1,19 +1,34 @@
-function App() {
-  return (
-    <main className="page">
-      <nav className="nav" aria-label="Hoofdnavigatie">
-        <a className="brand" href="/">
-          Plymouth
-        </a>
-        <div className="navLinks">
-          <a href="#over">Over</a>
-          <a href="#contact">Contact</a>
-        </div>
-      </nav>
+import React from 'react';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import Nav from './components/Nav';
+import Footer from './components/Footer';
+import Home from './pages/Home';
+import Login from './pages/Login';
+import Register from './pages/Register';
+import VerifyPhone from './pages/VerifyPhone';
+import TasksMap from './pages/TasksMap';
+import TaskDescription from './pages/TaskDescription';
 
-      <section className="hero"></section>
-    </main>
+export default function App() {
+  return (
+    <BrowserRouter>
+      <Routes>
+        <Route
+          path="/"
+          element={
+            <main className="page">
+              <Nav />
+              <Home />
+              <Footer />
+            </main>
+          }
+        />
+        <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Register />} />
+        <Route path="/verify-phone" element={<VerifyPhone />} />
+        <Route path="/tasks" element={<TasksMap />} />
+        <Route path="/task-description" element={<TaskDescription />} />
+      </Routes>
+    </BrowserRouter>
   );
 }
-
-export default App;
