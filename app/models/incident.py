@@ -1,11 +1,12 @@
 from decimal import *
 from datetime import datetime
+
 class Incident:
     def __init__(
             self,
             title : str,
             description: str,
-            type: str,
+            incident_type: str,
             important_data: str,
             important_data_extra : str,
             latitude : Decimal,
@@ -20,7 +21,7 @@ class Incident:
     ):
         self.title = title
         self.description = description
-        self.type = type
+        self.type = incident_type
         self.important_data = important_data
         self.important_data_extra = important_data_extra
         self.latitude = latitude

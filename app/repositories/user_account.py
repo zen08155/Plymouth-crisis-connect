@@ -1,7 +1,7 @@
 import bcrypt
-from database.database_connection import Database
-from models.user_data import UserData
-from models.user_skills import UserSkills
+from app.database.database_connection import Database
+from app.models.user_data import UserData
+from app.models.user_skills import UserSkills
 from datetime import date
 from typing import Optional
 
@@ -10,6 +10,7 @@ class UserAccount:
     """
     def __init__(self):
         pass
+
     def create_account(self, firstname: str, surname: str, password: str, email: str, phone_nr: str, birthday : date, role: str = "volunteer", status = "available") -> bool:
         """Create a new user account and insert into DB
 
@@ -117,9 +118,13 @@ class UserAccount:
             
             skill_id = cursor.lastrowid
             cursor.execute(sql_volunteerskill, (self.__user_id, skill_id))
+            conn.commit()
 
         except Exception as e:
             print("error: " + str(e))
+
+        finally: 
+            conn.close()
 
     def volunteer_for_team(self, user_id : int, team_id : int) -> None:
         """User assigns themselves to a (main/general) team of an incident, to more specialized teams the coordinator will have to assign them
@@ -142,8 +147,16 @@ class UserAccount:
 
         except Exception as e:
             print("error: " + e)
-        
 
+        finally:
+            conn.close()
+        
+#TESTING
+# usr =  UserAccount()
+# print(usr.create_account("jenita2", "z", "pw", "yay@", "123", date(2000, 1, 31))) 
+# obj = usr.log_in("yay@", "pw")
+# print(obj)
+# print(obj.name, obj.surname, obj.email, obj.birthday, obj.role, obj.status, obj.is_active, obj.updated_at, obj.avg_response_time)
 
         
         
