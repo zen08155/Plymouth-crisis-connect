@@ -8,11 +8,7 @@ interface Message {
   self: boolean;
 }
 
-const INITIAL_MESSAGES: Message[] = [
-  { id: 1, sender: 'Emma J.',  text: 'Anyone near Devonport hub? We need an extra pair of hands.', self: false },
-  { id: 2, sender: 'You',      text: 'I can be there in 20 minutes.', self: true },
-  { id: 3, sender: 'Liam W.',  text: 'Same — heading there now.', self: false },
-];
+const INITIAL_MESSAGES: Message[] = [];
 
 export default function Chat() {
   const navigate = useNavigate();

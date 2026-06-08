@@ -7,9 +7,9 @@ interface Skill {
 }
 
 const DEFAULT_SKILLS: Skill[] = [
-  { id: 1, label: 'First Aid Certified' },
-  { id: 2, label: 'Mental Health First Aid' },
-  { id: 3, label: 'Crisis Counsellor' },
+  { id: 1, label: '' },
+  { id: 2, label: '' },
+  { id: 3, label: '' },
 ];
 
 export default function Skills() {

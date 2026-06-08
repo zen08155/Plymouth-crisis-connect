@@ -8,16 +8,16 @@ interface User {
 }
 
 const MOCK_USERS: User[] = [
-  { id: 1, name: 'Emma Johnson',   role: 'Volunteer' },
-  { id: 2, name: 'Liam Williams',  role: 'Volunteer' },
-  { id: 3, name: 'Sophia Brown',   role: 'Volunteer' },
-  { id: 4, name: 'Noah Davis',     role: 'Coordinator' },
+  { id: 1, name: '', role: '' },
+  { id: 2, name: '', role: '' },
+  { id: 3, name: '', role: '' },
+  { id: 4, name: '', role: '' },
 ];
 
 const SETTINGS_OPTIONS = [
-  'Chat settings',
-  'Something else...',
-  'Something else...',
+  '',
+  '',
+  '',
 ];
 
 export default function Settings() {
@@ -48,9 +48,9 @@ export default function Settings() {
             </svg>
           </div>
           <div className="set-profile-info">
-            <span className="set-profile-name">Name Surname</span>
+            <span className="set-profile-name"></span>
             <span className="set-profile-dot">•</span>
-            <span className="set-profile-role">Coordinator</span>
+            <span className="set-profile-role"></span>
           </div>
           <button className="set-message-btn" onClick={() => navigate('/chat')}>
             Message
