@@ -48,5 +48,6 @@ class UserSkills:
             if not all(required):
                 raise ValueError("Certificate information is required")
         
+        # TODO: add setters
         
      

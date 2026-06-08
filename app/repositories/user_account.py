@@ -6,12 +6,10 @@ from datetime import date
 from typing import Optional
 
 class UserAccount:
-    __user_id = -1
     """User repository, includes create_account and log_in (which should be login tbh but ok)
     """
     def __init__(self):
         pass
-
     def create_account(self, firstname: str, surname: str, password: str, email: str, phone_nr: str, birthday : date, role: str = "volunteer", status = "available") -> bool:
         """Create a new user account and insert into DB
 
@@ -123,7 +121,7 @@ class UserAccount:
         except Exception as e:
             print("error: " + str(e))
 
-    def volunteer_for_team(self, team_id : int) -> None:
+    def volunteer_for_team(self, user_id : int, team_id : int) -> None:
         """User assigns themselves to a (main/general) team of an incident, to more specialized teams the coordinator will have to assign them
 
         Args:
@@ -132,7 +130,7 @@ class UserAccount:
         Raises:
             ValueError: throws exception if the user_id is invalid
         """
-        if self.__user_id == -1:
+        if user_id == -1:
             raise ValueError("User id is not set")
         
         sql = "INSERT INTO volunteeringTeams (teamId, userId) VALUES (%s, %s)"
@@ -140,7 +138,7 @@ class UserAccount:
         try:
             conn = Database.get_connection()
             cursor = conn.cursor()
-            cursor.execute(sql, (team_id, self.__user_id))
+            cursor.execute(sql, (team_id, user_id))
 
         except Exception as e:
             print("error: " + e)
