@@ -1,0 +1,215 @@
+
+import requests
+from decimal import *
+from app.models.incident import Incident
+from app.database.database_connection import Database
+from datetime import datetime
+
+class CoordinatorRepository:
+    
+    def create_incident(self, incident : Incident, coordinator_id : int) -> bool:
+        """Creates an incident and immediatelly sends out a notification using the created incident
+
+        Args:
+            incident (Incident): Object with all incident data
+            admin_id (int): user_id of the admin
+
+        Returns:
+            bool: on success/failure
+        """
+        sql = "INSERT INTO incidents (title, description, type, importantData, importantDataExtra, latitude, longitude, priority, createdAt, createdBy) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"
+        sql_notifs = "INSERT INTO incidentnotification(incidentId, title, sentAt) VALUES (%s, %s, %s)"
+        current_time = datetime.now()
+
+        try : 
+            conn = Database.get_connection()
+            cursor = conn.cursor()
+            cursor.execute(sql, (incident.title, incident.description, incident.type, incident.important_data, incident.important_data_extra, incident.latitude, incident.longitude, incident.priority, current_time, coordinator_id))
+
+            #creates the notification
+            incident_id = cursor.lastrowid
+            cursor.execute(sql_notifs, (incident_id, incident.title, current_time))
+
+            notif_id = cursor.lastrowid
+            cursor.execute(f"UPDATE incidents SET notificationId = {notif_id} WHERE incidentId = {incident_id}")
+            conn.commit()
+
+            #create the main-team on incident-creation
+            self.create_team(incident_id, coordinator_id, -1, "MAIN - " + incident.title)
+            return True
+             
+        except Exception as e:
+            print("error: " + str(e))
+            conn.rollback()
+            return False
+        
+        finally: conn.close()
+
+    def create_team(self, incidentId : int, coordinator_id : int, team_leader_id : int, name : str, task : str = "", createdAt : datetime = datetime.now(), is_active : bool = True):
+        sql = "INSERT INTO team (incidentId, coordinatorId, teamLeaderId, name, task, createdAt, isActive) VALUES(%s, %s, %s, %s, %s, %s, %s)"
+
+        try:
+            conn = Database.get_connection()
+            cursor = conn.cursor()
+            cursor.execute(sql, (incidentId, coordinator_id, team_leader_id, name, task, createdAt, is_active))
+            conn.commit()
+            return True
+        except Exception as e:
+            print("error: " + str(e))
+            conn.rollback()
+            return False
+            
+    def close_incident(self, coordinator_id : int, incident_id : int) -> bool:
+        """Updates the incident with an endedAt and endedBy
+
+        Args:
+            admin_id (int): user_id of the admin closing the incident
+            incident_id (int): id of the incident being closed
+
+        Returns:
+            bool: on success/failure
+    
+        """
+        sql = "UPDATE incidents SET endedAt = %s, endedBy = %s WHERE incidentId = %s"
+
+        try:
+            conn = Database.get_connection()
+            cursor = conn.cursor()
+            cursor.execute(sql, (datetime.now(), coordinator_id, incident_id))
+            conn.commit()
+            return True
+
+        except Exception as e:
+            print("error: " + str(e))  
+            conn.rollback()
+            return False
+
+        finally: 
+            conn.close()  
+
+    def add_volunteer_to_team(self, volunteer_id : int, team_id : int) ->bool :
+        """read method name
+
+        Args:
+            volunteer_id (int): user_id of the volunteer to be added
+            team_id (int): id of team
+
+        Returns:
+            bool: on success/failure
+        """
+        sql = "INSERT INTO volunteeringTeams (teamId, userId) VALUES (%s, %s)"
+
+        try:
+            conn = Database.get_connection()    
+            cursor = conn.cursor()
+            cursor.execute(sql, (team_id, volunteer_id))
+            conn.commit()
+            return True
+
+        except Exception as e:
+            print("error: " + str(e))
+            conn.rollback()
+            return False
+
+        finally: conn.close()
+
+    def remove_volunteer_from_team(self, volunteer_id : int, team_id : int) -> bool:
+        """Removes the volunteer from a team
+
+        Args:
+            volunteer_id (int): user_id of the volunteer
+            team_id (int): team where the user is being removed from
+
+        Returns: bool on success/failure
+        """
+        sql = "DELETE FROM volunteeringTeams WHERE teamId = %s AND userId = %s"
+
+        try:
+            conn = Database.get_connection()
+            cursor = conn.cursor()
+            cursor.execute(sql, (team_id, volunteer_id))
+            conn.commit()
+            return True
+
+        except Exception as e:
+            print("error: " + str(e))
+            conn.rollback()
+            return False
+
+        finally: 
+            conn.close()
+
+    def appoint_team_lead(self, team_id : int, volunteer_id : int) -> bool:
+        """Appointing a volunteer as the leader of a team
+
+        Args:
+            team_id (int): team the volunteer is being appointed to
+            volunteer_id (int): the volunteer being assigned as lead
+
+        Returns: bool on success/failure
+        """
+        sql = "UPDATE team SET teamLeaderId = %s WHERE teamId = %s"
+
+        try:
+            conn = Database.get_connection()
+            cursor = conn.cursor()
+            cursor.execute(sql, (volunteer_id, team_id))
+            conn.commit()
+            return True
+        
+        except Exception as e:
+            print("error: " + str(e))
+            conn.rollback()
+            return False
+        
+        finally: 
+            conn.close()
+
+    def convert_location_to_coords(self, location : str) -> tuple[Decimal, Decimal]:
+        """Converts location into coords, only takes street rn? idk, city and country are standard Plymouth and England
+
+        Args:
+            location (str): streetname/location
+
+        Raises:
+            Exception: raises an exception when nominatim doesn't return coords
+
+        Returns:
+            tuple[Decimal, Decimal]: returns the lat and lon as a tuple
+        """
+        country = "England"
+        city = "Plymouth"
+        nominatim_url = f"https://nominatim.openstreetmap.org/search?q={location}%20{city}%20{country}&format=json&limit=1"
+        header = {
+            "User-Agent": "PlymouthCrisisConnect/1.0 (6043508@mborijnland.nl)"
+        }
+        response = requests.get(nominatim_url, headers= header).json()
+        
+        if not response:
+            raise Exception("No coordinates found for location")
+
+        first = response[0]
+
+        latitude = Decimal(first["lat"])
+        longitude = Decimal(first["lon"])
+
+        return latitude, longitude
+
+#TESTING
+# admin_id = 2
+# adm = CoordinatorRepository()
+
+# inc = Incident("Fire at preschool 3", "There's a fire at preschool XXX in disctrict blablablah", "bilalGoingOutside", "school-aged children, barely/not self-reliable", "", 50.4154198, -4.1225064, "urgent",)
+# adm.create_incident(inc, admin_id)
+# print(adm.close_incident(admin_id, 8))
+# adm.add_volunteer_to_team(1, 1)
+# adm.remove_volunteer_from_team(1, 1)
+# adm.appoint_team_lead(1, 1)
+
+# lat, lon = adm.convert_location_to_coords("Royal Parade")
+# print(lat)
+# print(lon)
+    
+
+
+    
