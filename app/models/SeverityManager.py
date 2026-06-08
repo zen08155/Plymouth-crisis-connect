@@ -1,7 +1,5 @@
 from app.database import fake_database
-from dash import Dash, html, dcc, Input, Output
-from dash.dash_table import DataTable
-import plotly.express as px
+
 
 #print(fake_database.database)
 
