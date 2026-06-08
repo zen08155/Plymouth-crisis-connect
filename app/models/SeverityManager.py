@@ -1,7 +1,5 @@
 from app.database import fake_database
-from dash import Dash, html, dcc, Input, Output
-from dash.dash_table import DataTable
-import plotly.express as px
+
 
 #print(fake_database.database)
 
@@ -28,46 +26,5 @@ def filter_by_severity(incidents, severity):
     filtered_incidents = [incident for incident in incidents if incident["Priority"].lower() == severity.lower()]
     return filtered_incidents
 
-print(filter_by_severity(incidents, "urgent"))
 
 
-def map_make(incidents):
-    lats = [d["Latitude"] for d in incidents]
-    lons = [d["Longitude"] for d in incidents]
-    names = [d["Title"] for d in incidents]
-    RiskLevel = [d["Priority"] for d in incidents]
-
-    color_map = {
-    "urgent": "crimson",
-    "high": "orange",
-    "medium": "yellow",
-    "low": "darkgreen",
-    "none": "gray"}
-
-    fig = px.scatter_mapbox(
-        lat=lats,
-        lon=lons,
-        hover_name=names,
-        zoom=3,
-        height=1000,
-        color=RiskLevel,
-        color_discrete_map=color_map,
-     )
-    
-
-
-
-
-    
-    
-    fig.update_traces(marker=dict(size=10,))
-    fig.update_layout(
-        mapbox_style="open-street-map",
-        autosize=True
-    )
-    print(incidents[:3])
-    print(lats[:3], lons[:3])
-
-    fig.show()
-
-map_make(incidents) # 
