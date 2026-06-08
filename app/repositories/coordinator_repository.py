@@ -1,4 +1,6 @@
 
+import requests
+from decimal import *
 from app.models.incident import Incident
 from app.database.database_connection import Database
 from datetime import datetime
@@ -163,6 +165,36 @@ class CoordinatorRepository:
         finally: 
             conn.close()
 
+    def convert_location_to_coords(self, location : str) -> tuple[Decimal, Decimal]:
+        """Converts location into coords, only takes street rn? idk, city and country are standard Plymouth and England
+
+        Args:
+            location (str): streetname/location
+
+        Raises:
+            Exception: raises an exception when nominatim doesn't return coords
+
+        Returns:
+            tuple[Decimal, Decimal]: returns the lat and lon as a tuple
+        """
+        country = "England"
+        city = "Plymouth"
+        nominatim_url = f"https://nominatim.openstreetmap.org/search?q={location}%20{city}%20{country}&format=json&limit=1"
+        header = {
+            "User-Agent": "PlymouthCrisisConnect/1.0 (6043508@mborijnland.nl)"
+        }
+        response = requests.get(nominatim_url, headers= header).json()
+        
+        if not response:
+            raise Exception("No coordinates found for location")
+
+        first = response[0]
+
+        latitude = Decimal(first["lat"])
+        longitude = Decimal(first["lon"])
+
+        return latitude, longitude
+
 #TESTING
 # admin_id = 2
 # adm = CoordinatorRepository()
@@ -174,7 +206,9 @@ class CoordinatorRepository:
 # adm.remove_volunteer_from_team(1, 1)
 # adm.appoint_team_lead(1, 1)
 
-
+# lat, lon = adm.convert_location_to_coords("Royal Parade")
+# print(lat)
+# print(lon)
     
 
 

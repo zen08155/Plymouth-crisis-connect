@@ -8,7 +8,7 @@ class UserSkills:
                  description : str,
                  skill_type : str,
                  skill_description : str | None = None,
-                 proof_of_certificate : str | None = None, #FIXME: url or bytes?
+                 proof_of_certificate : str | None = None,
                  name_of_certificate : str | None = None,
                  expiration_date_certificate : date | None = None,
                  course_taken_at : date | None = None
