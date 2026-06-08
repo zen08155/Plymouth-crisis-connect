@@ -1,6 +1,7 @@
 import bcrypt
-from database.database_connection import Database
-from models.user_data import UserData
+from app.database.database_connection import Database
+from app.models.user_data import UserData
+from app.models.user_skills import UserSkills
 from datetime import date
 from typing import Optional
 
@@ -67,7 +68,7 @@ class UserAccount:
             if bcrypt.checkpw(password.encode(), pw_byte) :
                 cursor.execute(sql_id, (email,))
                 row = cursor.fetchone()
-               
+                self.__user_id = row["userId"]
                 
                 return UserData(hashed_password=row["password"],
                             name=row["name"],
@@ -94,3 +95,70 @@ class UserAccount:
         
         finally:
             if conn: conn.close()
+
+    def set_skills(self, skills: UserSkills) -> None:
+        """Sets skills for User in database, also connects the skills and user in volunteerSkills.
+
+        Args:
+            skills (UserSkills): Object with skill data
+
+        Raises:
+            ValueError: throws exception when the user_id is invalid.
+        """
+        sql = "INSERT INTO skills (title, description, skillType, skillDescription, certificateName, expirationDateCertificate, courseTakenAt) VALUES (%s, %s, %s, %s, %s, %s %s, %s)"
+        sql_volunteerskill = "INSERT INTO volunteerSkills(skillId, userId) VALUES (%s, %s)"
+
+        if self.__user_id == -1:
+            raise ValueError("User id is not set!")
+        
+        try:
+            conn = Database.get_connection()
+            cursor = conn.cursor()
+            cursor.execute(sql, (skills.title, skills.description, skills.skill_type, skills.skill_description, skills.proof_of_certificate, skills.name_of_certificate, skills.expiration_date_certificate, skills.course_taken_at))
+            
+            skill_id = cursor.lastrowid
+            cursor.execute(sql_volunteerskill, (self.__user_id, skill_id))
+            conn.commit()
+
+        except Exception as e:
+            print("error: " + str(e))
+
+        finally: 
+            conn.close()
+
+    def volunteer_for_team(self, user_id : int, team_id : int) -> None:
+        """User assigns themselves to a (main/general) team of an incident, to more specialized teams the coordinator will have to assign them
+
+        Args:
+            team_id (int): team id
+
+        Raises:
+            ValueError: throws exception if the user_id is invalid
+        """
+        if user_id == -1:
+            raise ValueError("User id is not set")
+        
+        sql = "INSERT INTO volunteeringTeams (teamId, userId) VALUES (%s, %s)"
+        
+        try:
+            conn = Database.get_connection()
+            cursor = conn.cursor()
+            cursor.execute(sql, (team_id, user_id))
+
+        except Exception as e:
+            print("error: " + e)
+
+        finally:
+            conn.close()
+        
+#TESTING
+# usr =  UserAccount()
+# print(usr.create_account("jenita2", "z", "pw", "yay@", "123", date(2000, 1, 31))) 
+# obj = usr.log_in("yay@", "pw")
+# print(obj)
+# print(obj.name, obj.surname, obj.email, obj.birthday, obj.role, obj.status, obj.is_active, obj.updated_at, obj.avg_response_time)
+
+        
+        
+
+
