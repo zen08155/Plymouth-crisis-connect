@@ -23,7 +23,7 @@ class UserData:
                  is_active: bool = True,
                  avg_response_time : datetime | None = None,
                  push_notifications : bool = False,
-                 id : int = None
+                 id : int | None = None
                  
                  ):
         self.password = hashed_password
@@ -39,7 +39,7 @@ class UserData:
         self.avg_response_time = avg_response_time #to be calculated later on...
         self.push_notifications_enabled = push_notifications
         self.status = status
-        self.id = id #None on first creation, afterwards fetch id from db
+        self.user_id = id #None on first creation, afterwards fetch id from db
 
     def __touch(self):
         """Updates updated_at to current time"""

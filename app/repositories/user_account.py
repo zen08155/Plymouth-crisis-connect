@@ -5,6 +5,8 @@ from datetime import date
 from typing import Optional
 
 class UserAccount:
+    """User repository, includes create_account and log_in (which should be login tbh but ok)
+    """
     def __init__(self):
         pass
 

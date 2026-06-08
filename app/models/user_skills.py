@@ -8,12 +8,12 @@ class UserSkills:
                  description : str,
                  skill_type : str,
                  skill_description : str | None = None,
-                 proof_of_certificate : str | None = None,
+                 proof_of_certificate : str | None = None, #FIXME: pdf, image, idk
                  name_of_certificate : str | None = None,
                  expiration_date_certificate : date | None = None,
                  course_taken_at : date | None = None
                  ):
-        self.id = id or None #None on first creation, afterwards fetch id from db
+        self.skill_id = id or None #None on first creation, afterwards fetch id from db
         self.title = title
         self.description = description
         self.skill_type = skill_type
@@ -25,7 +25,6 @@ class UserSkills:
         self.name_of_certificate = name_of_certificate 
         self.expiration_date_certificate = expiration_date_certificate
         self.__validate()
-
 
     def __validate(self):
         """Checks if each field is filled as required
