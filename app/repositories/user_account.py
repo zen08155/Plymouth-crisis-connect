@@ -1,10 +1,12 @@
 import bcrypt
-from core.database_connection import Database
-from models.user import User
+from database.database_connection import Database
+from models.user_data import UserData
 from datetime import date
 from typing import Optional
 
 class UserAccount:
+    """User repository, includes create_account and log_in (which should be login tbh but ok)
+    """
     def __init__(self):
         pass
 
@@ -17,7 +19,7 @@ class UserAccount:
         salt = bcrypt.gensalt()
         hashed_pw = bcrypt.hashpw(pw, salt) 
 
-        user = User(hashed_pw, firstname, surname, email, phone_nr, birthday, role, status)
+        user = UserData(hashed_pw, firstname, surname, email, phone_nr, birthday, role, status)
 
         sql = f"""INSERT INTO users (password, name, surname, email, role, status, phoneNumber, birthday, createdAt, updatedAt, isActive, avgResponseTimeMins, pushNotifications)
                  VALUES(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)"""
@@ -35,9 +37,9 @@ class UserAccount:
             return False   
         
         finally:
-            conn.close()
+            if conn: conn.close()
 
-    def log_in(self, email : str, password : str) -> Optional[User] :
+    def log_in(self, email : str, password : str) -> Optional[UserData] :
         """Log in user using email and password
 
         Args:
@@ -67,12 +69,12 @@ class UserAccount:
                 row = cursor.fetchone()
                
                 
-                return User(hashed_password=row["password"],
+                return UserData(hashed_password=row["password"],
                             name=row["name"],
                             surname=row["surname"],
                             email=row["email"],
-                            phone_number=["phoneNumber"],
-                            birthday=["birthday"],
+                            phone_number=row["phoneNumber"],
+                            birthday=row["birthday"],
                             role=row["role"],
                             created_at=row["createdAt"],
                             updated_at=row["createdAt"],
@@ -91,4 +93,4 @@ class UserAccount:
             return None
         
         finally:
-            conn.close()
+            if conn: conn.close()

@@ -3,9 +3,10 @@ import bcrypt
 import re #TODO: use for verifying email format
 
     
-class User:
+class UserData:
     """
-    Data object, storing user-account data
+    Data object, storing user-account data with setter methods 
+    DO NOT directly modify the variables, use the update-methods instead
     """
 
     def __init__(self, 
@@ -17,15 +18,14 @@ class User:
                  birthday : date,
                  role: str,
                  status: str,
-                 created_at: datetime = None,
-                 updated_at: datetime = None,
+                 created_at: datetime | None = None,
+                 updated_at: datetime | None = None,
                  is_active: bool = True,
-                 avg_response_time : datetime = None,
+                 avg_response_time : datetime | None = None,
                  push_notifications : bool = False,
-                 id : int = None
+                 id : int | None = None
                  
                  ):
-        self.user_id = None
         self.password = hashed_password
         self.name = name
         self.surname = surname
@@ -36,10 +36,10 @@ class User:
         self.created_at = created_at or datetime.now()
         self.updated_at = updated_at or datetime.now()
         self.is_active = is_active
-        self.avg_response_time = avg_response_time or None
+        self.avg_response_time = avg_response_time #to be calculated later on...
         self.push_notifications_enabled = push_notifications
         self.status = status
-        self.id = id or None
+        self.user_id = id #None on first creation, afterwards fetch id from db
 
     def __touch(self):
         """Updates updated_at to current time"""
