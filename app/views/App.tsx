@@ -1,9 +1,8 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
-import Nav from './components/Nav';
-import Footer from './components/Footer';
+import { AppProvider } from './context/AppContext';
 import Sidebar from './components/Sidebar';
-import Home from './pages/Home';
+import Welcome from './pages/Home';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import VerifyPhone from './pages/VerifyPhone';
@@ -13,34 +12,33 @@ import Profile from './pages/Profile';
 import Skills from './pages/Skills';
 import Settings from './pages/Settings';
 import Chat from './pages/Chat';
+import AdminDashboard from './pages/AdminDashboard';
 
 export default function App() {
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-
   return (
-    <BrowserRouter>
-      <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
-      <Routes>
-        <Route
-          path="/"
-          element={
-            <main className="page">
-              <Nav />
-              <Home />
-              <Footer />
-            </main>
-          }
-        />
-        <Route path="/login" element={<Login />} />
-        <Route path="/register" element={<Register />} />
-        <Route path="/verify-phone" element={<VerifyPhone />} />
-        <Route path="/tasks" element={<TasksMap onOpenSidebar={() => setSidebarOpen(true)} />} />
-        <Route path="/task-description" element={<TaskDescription />} />
-        <Route path="/profile" element={<Profile />} />
-        <Route path="/skills" element={<Skills />} />
-        <Route path="/settings" element={<Settings />} />
-        <Route path="/chat" element={<Chat />} />
-      </Routes>
-    </BrowserRouter>
+    <AppProvider>
+      <BrowserRouter>
+        {/* Sidebar wordt globaal aangestuurd via de AppContext */}
+        <Sidebar />
+        <Routes>
+          {/* Index = login/register */}
+          <Route path="/" element={<Login />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<Register />} />
+          <Route path="/verify-phone" element={<VerifyPhone />} />
+          {/* Onboarding na registratie */}
+          <Route path="/welcome" element={<Welcome />} />
+          {/* App */}
+          <Route path="/tasks" element={<TasksMap />} />
+          <Route path="/task-description" element={<TaskDescription />} />
+          <Route path="/profile" element={<Profile />} />
+          <Route path="/skills" element={<Skills />} />
+          <Route path="/settings" element={<Settings />} />
+          <Route path="/chat" element={<Chat />} />
+          {/* Admin verificatie-dashboard */}
+          <Route path="/admin" element={<AdminDashboard />} />
+        </Routes>
+      </BrowserRouter>
+    </AppProvider>
   );
 }

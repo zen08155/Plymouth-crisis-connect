@@ -1,6 +1,10 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useApp } from '../context/AppContext';
 
 export default function VerifyPhone() {
+  const navigate = useNavigate();
+  const { login } = useApp();
   const [country, setCountry] = useState('GB');
   const [phone, setPhone] = useState('');
   const [code, setCode] = useState('');
@@ -9,6 +13,12 @@ export default function VerifyPhone() {
   function handleSend(e: React.FormEvent) {
     e.preventDefault();
     setCodeSent(true);
+  }
+
+  // Telefoon-login afronden -> bestaande gebruiker gaat naar de app
+  function handleConfirm() {
+    login();
+    navigate('/tasks');
   }
 
   const countries = [
@@ -68,6 +78,17 @@ export default function VerifyPhone() {
           onChange={(e) => setCode(e.target.value)}
           disabled={!codeSent}
         />
+
+        {codeSent && (
+          <button
+            type="button"
+            className="auth-btn verify-send-btn"
+            onClick={handleConfirm}
+            disabled={!code.trim()}
+          >
+            Confirm
+          </button>
+        )}
 
       </div>
     </div>

@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useApp } from '../context/AppContext';
 
 export default function Profile() {
   const navigate = useNavigate();
+  const { openSidebar } = useApp();
 
   const [form, setForm] = useState({
     name: '',
@@ -28,6 +30,11 @@ export default function Profile() {
           </svg>
         </button>
         <div className="pf-tab">PROFILE</div>
+        <button className="ah-hamburger" onClick={openSidebar} aria-label="Open menu">
+          <span />
+          <span />
+          <span />
+        </button>
       </div>
 
       {/* Body */}

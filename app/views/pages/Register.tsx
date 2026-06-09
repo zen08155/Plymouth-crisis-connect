@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useApp } from '../context/AppContext';
 
 export default function Register() {
   const navigate = useNavigate();
+  const { register } = useApp();
   const [form, setForm] = useState({
     firstName: '',
     surname: '',
@@ -19,7 +21,9 @@ export default function Register() {
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    navigate('/verify-phone');
+    // Nieuwe gebruiker -> registreren en daarna de welcome/onboarding doen
+    register(`${form.firstName} ${form.surname}`.trim());
+    navigate('/welcome');
   }
 
   return (

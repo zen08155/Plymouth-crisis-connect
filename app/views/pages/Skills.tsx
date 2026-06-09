@@ -1,5 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useApp } from '../context/AppContext';
 
 interface Skill {
   id: number;
@@ -14,6 +15,7 @@ const DEFAULT_SKILLS: Skill[] = [
 
 export default function Skills() {
   const navigate = useNavigate();
+  const { openSidebar } = useApp();
   const [skills] = useState<Skill[]>(DEFAULT_SKILLS);
   const [description, setDescription] = useState('');
   const [fileName, setFileName] = useState<string | null>(null);
@@ -35,6 +37,11 @@ export default function Skills() {
           </svg>
         </button>
         <div className="pf-tab">SKILLS</div>
+        <button className="ah-hamburger" onClick={openSidebar} aria-label="Open menu">
+          <span />
+          <span />
+          <span />
+        </button>
       </div>
 
       {/* Content */}

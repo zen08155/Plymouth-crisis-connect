@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import Logo from '../components/Logo';
+import StatusBanner from '../components/StatusBanner';
+import { useApp } from '../context/AppContext';
 
 // ── Types ─────────────────────────────────────────────────────────────
 type Category = 'Mental Health' | 'Community' | 'Emergency' | 'Digital' | 'Youth Support';
@@ -13,6 +15,8 @@ interface Task {
   category: Category;
   lat: number;
   lng: number;
+  // NL: vereist skills/certificaten -> alleen voor geverifieerde gebruikers
+  requiresVerification?: boolean;
 }
 
 // ── Constants ─────────────────────────────────────────────────────────
@@ -25,10 +29,10 @@ const CATEGORY_COLORS: Record<Category, string> = {
 };
 
 const TASKS: Task[] = [
-  { id: 1, title: 'Crisis phone support — evening shift volunteers needed across Plymouth',    category: 'Mental Health', lat: 50.3763, lng: -4.1437 },
+  { id: 1, title: 'Crisis phone support — evening shift volunteers needed across Plymouth',    category: 'Mental Health', lat: 50.3763, lng: -4.1437, requiresVerification: true },
   { id: 2, title: 'Community outreach — distribute mental health resource packs in PL1–PL4',  category: 'Community',     lat: 50.3801, lng: -4.1352 },
   { id: 3, title: 'Drop-in centre support — assist staff at the Devonport wellbeing hub',     category: 'Digital',       lat: 50.3702, lng: -4.1612 },
-  { id: 4, title: 'Emergency response coordination training for new volunteers',               category: 'Emergency',     lat: 50.3851, lng: -4.1247 },
+  { id: 4, title: 'Emergency response coordination training for new volunteers',               category: 'Emergency',     lat: 50.3851, lng: -4.1247, requiresVerification: true },
   { id: 5, title: 'Youth mental health workshop — group facilitation support needed',         category: 'Youth Support', lat: 50.3650, lng: -4.1480 },
 ];
 
@@ -48,14 +52,15 @@ function createPinIcon(color: string): L.DivIcon {
 }
 
 // ── Component ─────────────────────────────────────────────────────────
-interface TasksMapProps {
-  onOpenSidebar?: () => void;
-}
-
-export default function TasksMap({ onOpenSidebar }: TasksMapProps) {
+export default function TasksMap() {
   const navigate = useNavigate();
+  const { openSidebar, verification } = useApp();
+  const isVerified = verification === 'verified';
   const mapRef      = useRef<HTMLDivElement>(null);
   const mapInstance = useRef<L.Map | null>(null);
+
+  // NL: een taak is vergrendeld als hij verificatie vereist en de gebruiker niet geverifieerd is
+  const isLocked = (task: Task) => !!task.requiresVerification && !isVerified;
 
   const [selectedCategories, setSelectedCategories] = useState<Set<Category>>(new Set());
 
@@ -116,15 +121,16 @@ export default function TasksMap({ onOpenSidebar }: TasksMapProps) {
 
       {/* ── Nav ── */}
       <nav className="tm2-nav">
-        <a href="/" className="tm2-logo-link"><Logo height={40} /></a>
-        <button className="tm2-user-btn" onClick={() => onOpenSidebar?.()} aria-label="Account">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none"
-               stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/>
-            <circle cx="12" cy="7" r="4"/>
-          </svg>
+        <a href="/tasks" className="tm2-logo-link"><Logo height={40} /></a>
+        <button className="ah-hamburger" onClick={openSidebar} aria-label="Open menu">
+          <span />
+          <span />
+          <span />
         </button>
       </nav>
+
+      {/* Verificatie-statusbalk (verdwijnt zodra geverifieerd) */}
+      <StatusBanner />
 
       {/* ── Map ── */}
       <div className="tm2-map-wrap">
@@ -142,16 +148,27 @@ export default function TasksMap({ onOpenSidebar }: TasksMapProps) {
             <button className="tm2-add-btn" aria-label="Add task">+</button>
           </div>
           <ul className="tm2-task-list">
-            {visibleTasks.map(task => (
-              <li
-                key={task.id}
-                className="tm2-task-item"
-                onClick={() => navigate('/task-description')}
-              >
-                <span className="tm2-dot" style={{ background: CATEGORY_COLORS[task.category] }} />
-                <span className="tm2-task-title">{task.title}</span>
-              </li>
-            ))}
+            {visibleTasks.map(task => {
+              const locked = isLocked(task);
+              return (
+                <li
+                  key={task.id}
+                  className={`tm2-task-item ${locked ? 'tm2-task-item--locked' : ''}`}
+                  onClick={() => { if (!locked) navigate('/task-description'); }}
+                  title={locked ? 'Verificatie vereist voor deze taak' : undefined}
+                >
+                  <span className="tm2-dot" style={{ background: CATEGORY_COLORS[task.category] }} />
+                  <span className="tm2-task-title">{task.title}</span>
+                  {locked && (
+                    <svg className="tm2-lock" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                         stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <rect x="3" y="11" width="18" height="11" rx="2"/>
+                      <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                    </svg>
+                  )}
+                </li>
+              );
+            })}
           </ul>
         </div>
 

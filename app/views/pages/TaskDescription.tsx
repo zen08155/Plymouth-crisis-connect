@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import Nav from '../components/Nav';
+import AppHeader from '../components/AppHeader';
 
 const descriptionLines = [
   'Crisis support volunteers are needed to assist residents in the Plymouth area.',
@@ -16,7 +16,7 @@ export default function TaskDescription() {
 
   return (
     <div className="td-page">
-      <Nav />
+      <AppHeader showBack showLogo />
       <h1 className="td-title">TASK DESCRIPTION PAGE</h1>
 
       <div className="td-card">
