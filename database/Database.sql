@@ -29,7 +29,7 @@ CREATE TABLE IF NOT EXISTS incidents (
   latitude decimal(10,7) NOT NULL,
   longitude decimal(10,7) NOT NULL,
   priority VARCHAR(255) NOT NULL,
-  status VARCHAR(255) NOT NULL DEFAULT 'open',
+  status Bool,
   createdAt DATETIME NOT NULL,
   createdBy INTEGER NOT NULL, 
   endedAt DATETIME,
