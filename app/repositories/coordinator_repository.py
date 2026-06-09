@@ -43,7 +43,7 @@ class CoordinatorRepository:
             conn.commit()
 
             #create the main-team on incident-creation
-            self.create_team(incident_id, coordinator_id, -1, "MAIN - " + incident.title)
+            self.create_team(incident_id, coordinator_id, None, "MAIN - " + incident.title)
             return True
              
         except Exception as e:

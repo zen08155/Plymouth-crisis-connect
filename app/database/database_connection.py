@@ -14,10 +14,10 @@ class Database:
     def get_connection(cls):
         if cls._connection is None:
             cls._connection = mysql.connector.connect(
-                host="localhost",
-                user="root",
-                password="",
-                database="plym"
+                host=os.getenv("DB_HOST", "localhost"),
+                user=os.getenv("DB_USER", "root"),
+                password=os.getenv("DB_PASSWORD", ""),
+                database=os.getenv("DB_NAME", "plymouthCrisis")
             )
 
         return cls._connection

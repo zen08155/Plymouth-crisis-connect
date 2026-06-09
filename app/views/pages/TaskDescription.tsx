@@ -1,27 +1,41 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
+import { useParams } from 'react-router-dom';
 import Nav from '../components/Nav';
-
-const descriptionLines = [
-  'Crisis support volunteers are needed to assist residents in the Plymouth area.',
-  'Tasks include phone check-ins, community outreach, and resource distribution.',
-  'No prior experience required — full training will be provided by our team.',
-  'Volunteers should be available for at least 4 hours per week.',
-  'All roles are flexible and can be completed remotely or in person.',
-  'Join our growing network of over 200 active community volunteers.',
-  'Make a real difference in the lives of people facing mental health crises.',
-];
+import { getIncident, volunteerForIncident, type Incident } from '../api/incidents';
 
 export default function TaskDescription() {
+  const { incidentId } = useParams();
+  const [incident, setIncident] = useState<Incident | null>(null);
+  const [loading, setLoading] = useState(true);
   const [volunteered, setVolunteered] = useState(false);
+
+  useEffect(() => {
+    const id = Number(incidentId || 101);
+
+    getIncident(id).then(result => {
+      setIncident(result);
+      setLoading(false);
+    });
+  }, [incidentId]);
+
+  async function handleVolunteer() {
+    if (!incident) return;
+
+    const success = await volunteerForIncident(incident.id);
+    if (success) setVolunteered(true);
+  }
+
+  const descriptionLines = incident?.description
+    ? incident.description.split('.').filter(Boolean).map(line => `${line.trim()}.`)
+    : ['Incident details are not available yet.'];
 
   return (
     <div className="td-page">
       <Nav />
-      <h1 className="td-title">TASK DESCRIPTION PAGE</h1>
+      <h1 className="td-title">{loading ? 'LOADING TASK' : incident?.title ?? 'TASK NOT FOUND'}</h1>
 
       <div className="td-card">
         <div className="td-card-body">
-
           <div className="td-content">
             <div className="td-lines">
               {descriptionLines.map((line, i) => (
@@ -29,7 +43,7 @@ export default function TaskDescription() {
               ))}
             </div>
             <div className="td-tag-wrap">
-              <span className="td-tag">TASK 1</span>
+              <span className="td-tag">{incident ? `${incident.type} - ${incident.priority}` : 'TASK'}</span>
             </div>
           </div>
 
@@ -45,12 +59,12 @@ export default function TaskDescription() {
 
             <button
               className={`td-volunteer-btn ${volunteered ? 'td-volunteer-btn--active' : ''}`}
-              onClick={() => setVolunteered(!volunteered)}
+              onClick={handleVolunteer}
+              disabled={!incident || volunteered}
             >
-              {volunteered ? 'Volunteered ✓' : 'Volunteer'}
+              {volunteered ? 'Volunteered' : 'Volunteer'}
             </button>
           </div>
-
         </div>
       </div>
     </div>

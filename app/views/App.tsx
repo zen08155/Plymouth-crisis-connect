@@ -36,6 +36,7 @@ export default function App() {
         <Route path="/verify-phone" element={<VerifyPhone />} />
         <Route path="/tasks" element={<TasksMap onOpenSidebar={() => setSidebarOpen(true)} />} />
         <Route path="/task-description" element={<TaskDescription />} />
+        <Route path="/task-description/:incidentId" element={<TaskDescription />} />
         <Route path="/profile" element={<Profile />} />
         <Route path="/skills" element={<Skills />} />
         <Route path="/settings" element={<Settings />} />

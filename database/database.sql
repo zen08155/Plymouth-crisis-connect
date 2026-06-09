@@ -2,7 +2,7 @@ CREATE DATABASE IF NOT EXISTS plymouthCrisis;
 USE plymouthCrisis;
 
 CREATE TABLE IF NOT EXISTS users (
-  userId INTEGER PRIMARY KEY,
+  userId INTEGER PRIMARY KEY AUTO_INCREMENT,
   password VARCHAR(255)  NOT NULL, 
   name VARCHAR(255)  NOT NULL,
   surname VARCHAR(255)  NOT NULL,
@@ -20,7 +20,7 @@ CREATE TABLE IF NOT EXISTS users (
 
 
 CREATE TABLE IF NOT EXISTS incidents (
-  incidentId INTEGER PRIMARY KEY  NOT NULL,
+  incidentId INTEGER PRIMARY KEY AUTO_INCREMENT,
   title VARCHAR(255) NOT NULL,
   description TEXT NOT NULL,
   type VARCHAR(255) NOT NULL,
@@ -29,12 +29,17 @@ CREATE TABLE IF NOT EXISTS incidents (
   latitude decimal(10,7) NOT NULL,
   longitude decimal(10,7) NOT NULL,
   priority VARCHAR(255) NOT NULL,
+<<<<<<<< HEAD:database/database.sql
+  status VARCHAR(255) NOT NULL DEFAULT 'open',
+  notificationId INTEGER,
+========
   status Bool,
+>>>>>>>> 3db033863384fa721f3253b5f0eeb50d91637af5:database/Database.sql
   createdAt DATETIME NOT NULL,
   createdBy INTEGER NOT NULL, 
   endedAt DATETIME,
   endedBy INTEGER,
-  FOREIGN KEY (createdBy) REFERENCES users(userId),  INDEX idx_incidents_status_priority (status, priority),
+  INDEX idx_incidents_status_priority (status, priority),
   INDEX idx_incidents_location (latitude, longitude),
   INDEX idx_incidents_type (type),
   FOREIGN KEY (createdBy) REFERENCES users(userId),
@@ -43,7 +48,7 @@ CREATE TABLE IF NOT EXISTS incidents (
 
 
 CREATE TABLE IF NOT EXISTS skills (
-  skillId INTEGER PRIMARY KEY  NOT NULL,
+  skillId INTEGER PRIMARY KEY AUTO_INCREMENT,
   title VARCHAR(255) NOT NULL,
   description VARCHAR(255) NOT NULL,
   skillType VARCHAR(255) NOT NULL,
@@ -56,10 +61,10 @@ CREATE TABLE IF NOT EXISTS skills (
 
 
 CREATE TABLE IF NOT EXISTS team (
-  teamId INTEGER PRIMARY KEY  NOT NULL,
+  teamId INTEGER PRIMARY KEY AUTO_INCREMENT,
   incidentId INTEGER  NOT NULL,
   coordinatorId INTEGER  NOT NULL,
-  teamLeaderId INTEGER NOT NULL,
+  teamLeaderId INTEGER,
   name VARCHAR(255) NOT NULL,
   task TEXT NOT NULL,
   createdAt DATETIME NOT NULL,
@@ -70,7 +75,7 @@ CREATE TABLE IF NOT EXISTS team (
 );
 
 CREATE TABLE IF NOT EXISTS tasks (
-  taskId INTEGER PRIMARY KEY NOT NULL,
+  taskId INTEGER PRIMARY KEY AUTO_INCREMENT,
   teamId INTEGER NOT NULL,
   name VARCHAR(255) NOT NULL,
   description VARCHAR(255) NOT NULL,
@@ -83,7 +88,7 @@ CREATE TABLE IF NOT EXISTS tasks (
 
 -- Core: simulated team chat. Real-time/live chat delivery is an extension.
 CREATE TABLE IF NOT EXISTS message(
-  messageId INTEGER PRIMARY KEY NOT NULL,
+  messageId INTEGER PRIMARY KEY AUTO_INCREMENT,
   teamId INTEGER NOT NULL,
   sentBy INTEGER NOT NULL,
   content TEXT NOT NULL,
@@ -94,11 +99,11 @@ CREATE TABLE IF NOT EXISTS message(
 );
 
 CREATE TABLE IF NOT EXISTS incidentNotification(
-  notificationId INTEGER  PRIMARY KEY NOT NULL,
+  notificationId INTEGER  PRIMARY KEY AUTO_INCREMENT,
   incidentId INTEGER NOT NULL,
   title VARCHAR(50) NOT NULL,
   message TEXT,
-  priority VARCHAR(255) NOT NULL,
+  priority VARCHAR(255) NOT NULL DEFAULT 'normal',
   sentBy INTEGER,
   sentAt DATETIME NOT NULL,
   FOREIGN KEY (sentBy) REFERENCES users(userId),
@@ -115,7 +120,7 @@ CREATE TABLE IF NOT EXISTS userNotifications (
 );
 
 CREATE TABLE IF NOT EXISTS volunteerAvailability (
-  availabilityId INTEGER PRIMARY KEY NOT NULL,
+  availabilityId INTEGER PRIMARY KEY AUTO_INCREMENT,
   userId INTEGER NOT NULL,
   status VARCHAR(255) NOT NULL,
   availableFrom DATETIME,
