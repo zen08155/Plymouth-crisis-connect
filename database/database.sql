@@ -29,12 +29,7 @@ CREATE TABLE IF NOT EXISTS incidents (
   latitude decimal(10,7) NOT NULL,
   longitude decimal(10,7) NOT NULL,
   priority VARCHAR(255) NOT NULL,
-<<<<<<<< HEAD:database/database.sql
-  status VARCHAR(255) NOT NULL DEFAULT 'open',
-  notificationId INTEGER,
-========
   status Bool,
->>>>>>>> 3db033863384fa721f3253b5f0eeb50d91637af5:database/Database.sql
   createdAt DATETIME NOT NULL,
   createdBy INTEGER NOT NULL, 
   endedAt DATETIME,
