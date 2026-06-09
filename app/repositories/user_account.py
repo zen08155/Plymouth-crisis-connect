@@ -11,7 +11,7 @@ class UserAccount:
     def __init__(self):
         pass
 
-    def create_account(self, firstname: str, surname: str, password: str, email: str, phone_nr: str, birthday : date, role: str = "volunteer", status = "available") -> bool:
+    def create_account(self, firstname: str, surname: str, password: str, email: str, phone_nr: str, birthday : date, role: str = "volunteer") -> bool:
         """Create a new user account and insert into DB
 
         Default role is 'volunteer' if no role is provided.
@@ -20,15 +20,15 @@ class UserAccount:
         salt = bcrypt.gensalt()
         hashed_pw = bcrypt.hashpw(pw, salt) 
 
-        user = UserData(hashed_pw, firstname, surname, email, phone_nr, birthday, role, status)
+        user = UserData(hashed_pw, firstname, surname, email, phone_nr, birthday, role)
 
-        sql = f"""INSERT INTO users (password, name, surname, email, role, status, phoneNumber, birthday, createdAt, updatedAt, isActive, avgResponseTimeMins, pushNotifications)
-                 VALUES(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)"""
+        sql = f"""INSERT INTO users (password, name, surname, email, role, phoneNumber, birthday, createdAt, updatedAt, isActive, avgResponseTimeMins, pushNotifications)
+                 VALUES(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)"""
 
         try:
             conn = Database.get_connection()
             cursor = conn.cursor()
-            cursor.execute(sql, (user.password, user.name, user.surname, user.email, user.role, user.status, user.phone, user.birthday, user.created_at, user.updated_at, user.is_active, user.avg_response_time, user.push_notifications_enabled))
+            cursor.execute(sql, (user.password, user.name, user.surname, user.email, user.role, user.phone, user.birthday, user.created_at, user.updated_at, user.is_active, user.avg_response_time, user.push_notifications_enabled))
             conn.commit()
             return True
             
@@ -83,7 +83,6 @@ class UserAccount:
                             avg_response_time=row["avgResponseTimeMins"],
                             push_notifications=row["pushNotifications"],
                             id=row["userId"],
-                            status=row["status"]
                             )
             else:
                 print("User not found.")
@@ -156,7 +155,7 @@ class UserAccount:
 # print(usr.create_account("jenita2", "z", "pw", "yay@", "123", date(2000, 1, 31))) 
 # obj = usr.log_in("yay@", "pw")
 # print(obj)
-# print(obj.name, obj.surname, obj.email, obj.birthday, obj.role, obj.status, obj.is_active, obj.updated_at, obj.avg_response_time)
+# print(obj.name, obj.surname, obj.email, obj.birthday, obj.role, obj.is_active, obj.updated_at, obj.avg_response_time)
 
         
         

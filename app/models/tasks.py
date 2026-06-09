@@ -1,13 +1,13 @@
-from datetime import date
-class TeamId:
+from datetime import datetime
+class Task:
     def __init__(
             self,
             teamId : int | None,
             name : str,
             description : str,
             priority: str,
-            createdAt: date | None = None,
-            UpdatedAt: date | None = None,
+            createdAt: datetime = datetime.now(),
+            UpdatedAt: datetime = datetime.now(),
             IsActive: bool = True
             ):
         self.team_id = teamId

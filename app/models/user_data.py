@@ -17,7 +17,6 @@ class UserData:
                  phone_number: str,
                  birthday : date,
                  role: str,
-                 status: str,
                  created_at: datetime = datetime.now(),
                  updated_at: datetime = datetime.now(),
                  is_active: bool = True,
@@ -38,7 +37,6 @@ class UserData:
         self.is_active = is_active
         self.avg_response_time = avg_response_time #to be calculated later on...
         self.push_notifications_enabled = push_notifications
-        self.status = status
         self.user_id = id #None on first creation, afterwards fetch id from db
 
     def __touch(self):

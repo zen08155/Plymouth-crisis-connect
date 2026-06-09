@@ -2,6 +2,7 @@
 import requests
 from decimal import *
 from app.models.incident import Incident
+from app.models.tasks import Task
 from app.database.database_connection import Database
 from datetime import datetime
 
@@ -195,9 +196,24 @@ class CoordinatorRepository:
 
         return latitude, longitude
 
+    def assign_task_to_team(self, task : Task) ->bool:
+        sql = "INSERT INTO tasks (teamId, name, description, priority, createdAt, updatedAt, IsActive) VALUES (%s, %s, %s, %s, %s, %s, %s)"
+
+        try:
+            conn =  Database.get_connection()
+            cursor = conn.cursor()
+            cursor.execute(sql, (task.team_id, task.name, task.description, task.priority, task.created_at, task.updated_at, task.is_active))
+            conn.commit()
+            return True
+        
+        except Exception as e:
+            print("error: " + str(e))
+            conn.rollback()
+            return False
+
 #TESTING
 # admin_id = 2
-# adm = CoordinatorRepository()
+adm = CoordinatorRepository()
 
 # inc = Incident("Fire at preschool 3", "There's a fire at preschool XXX in disctrict blablablah", "bilalGoingOutside", "school-aged children, barely/not self-reliable", "", 50.4154198, -4.1225064, "urgent",)
 # adm.create_incident(inc, admin_id)
@@ -209,6 +225,8 @@ class CoordinatorRepository:
 # lat, lon = adm.convert_location_to_coords("Royal Parade")
 # print(lat)
 # print(lon)
+task = Task(1, "sweep leaves", "sweep sum leaves", "urgent")
+print(adm.assign_task_to_team(task))
     
 
 
