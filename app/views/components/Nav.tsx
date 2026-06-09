@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Button from './Button';
 import Logo from './Logo';
+import { getAuthToken } from '../api';
 
 const links = [
   { label: 'Tasks',   href: '/tasks' },
@@ -19,6 +20,13 @@ export default function Nav() {
     else window.location.hash = href.replace('#', '');
   }
 
+  function openAccount() {
+    setOpen(false);
+    navigate(getAuthToken() ? '/profile' : '/login');
+  }
+
+  const isLoggedIn = Boolean(getAuthToken());
+
   return (
     <nav className="nav">
       <div className="nav-inner">
@@ -32,12 +40,20 @@ export default function Nav() {
         </div>
 
         <div className="nav-right">
-          <Button href="/login" variant="ghost" className="nav-login">
-            Log In
-          </Button>
-          <Button href="/register" variant="primary" className="nav-cta">
-            Sign Up
-          </Button>
+          {isLoggedIn ? (
+            <button type="button" className="button button-ghost nav-login" onClick={openAccount}>
+              Account
+            </button>
+          ) : (
+            <>
+              <Button href="/login" variant="ghost" className="nav-login">
+                Log In
+              </Button>
+              <Button href="/register" variant="primary" className="nav-cta">
+                Sign Up
+              </Button>
+            </>
+          )}
 
           {/* Hamburger */}
           <button
@@ -60,12 +76,20 @@ export default function Nav() {
           </a>
         ))}
         <div style={{ display: 'flex', gap: '10px', marginTop: '8px' }}>
-          <Button href="/login" variant="ghost" className="nav-mobile-cta">
-            Log In
-          </Button>
-          <Button href="/register" variant="primary" className="nav-mobile-cta">
-            Sign Up
-          </Button>
+          {isLoggedIn ? (
+            <button type="button" className="button button-ghost nav-mobile-cta" onClick={openAccount}>
+              Account
+            </button>
+          ) : (
+            <>
+              <Button href="/login" variant="ghost" className="nav-mobile-cta">
+                Log In
+              </Button>
+              <Button href="/register" variant="primary" className="nav-mobile-cta">
+                Sign Up
+              </Button>
+            </>
+          )}
         </div>
       </div>
     </nav>

@@ -1,7 +1,5 @@
-from repositories.user_repository import (
-    ALLOWED_ROLES,
-    authenticate_system_manager,
-    count_active_volunteers,
+from app.models.User import User
+from app.repositories.dashboard_repository import (
     get_activity_graph_data,
     get_average_response_times,
     get_filtered_dashboard_statistics,
@@ -9,11 +7,16 @@ from repositories.user_repository import (
     get_open_incident_statistics,
     get_project_progress,
     get_real_time_management_information,
+    list_active_incidents,
+    list_active_projects,
+)
+from app.repositories.user_repository import (
+    ALLOWED_ROLES,
+    authenticate_system_manager,
+    count_active_volunteers,
     get_user_by_id,
     get_volunteer_participation,
     is_trusted_volunteer,
-    list_active_incidents,
-    list_active_projects,
     list_registered_users,
     update_user_role,
 )
@@ -21,225 +24,84 @@ from repositories.user_repository import (
 
 class SystemManager:
     @staticmethod
-    def login(email, password):
-        return authenticate_system_manager(email, password)
+    def login(email: str, password: str) -> User:
+        user = authenticate_system_manager(email, password)
 
-    def __init__(self, user_id):
+        if user is None:
+            raise PermissionError("Invalid System Manager credentials.")
+
+        return user
+
+    def __init__(self, user_id: int):
         self.user = get_user_by_id(user_id)
 
         if self.user is None:
-            raise ValueError("System manager was not found.")
-
+            raise ValueError("System Manager was not found.")
+        if not self.user.is_active:
+            raise PermissionError("System Manager account is inactive.")
         if self.user.role != "system_manager":
-            raise PermissionError("Only a System Manager can use this class.")
+            raise PermissionError("System Manager permission is required.")
 
-    def promote_volunteer_to_coordinator(self, volunteer_id):
+    def promote_volunteer_to_coordinator(self, volunteer_id: int) -> dict:
         volunteer = get_user_by_id(volunteer_id)
 
         if volunteer is None:
-            return {
-                "success": False,
-                "message": "Promotion failed: volunteer was not found.",
-                "volunteer": None,
-            }
-
+            raise ValueError("Volunteer was not found.")
         if volunteer.role != "volunteer":
-            return {
-                "success": False,
-                "message": "Promotion failed: user is not a volunteer.",
-                "volunteer": volunteer.without_password(),
-            }
-
+            raise ValueError("User is not a volunteer.")
         if not volunteer.is_active:
-            return {
-                "success": False,
-                "message": "Promotion failed: volunteer account is inactive.",
-                "volunteer": volunteer.without_password(),
-            }
-
+            raise ValueError("Volunteer account is inactive.")
         if not is_trusted_volunteer(volunteer_id):
-            return {
-                "success": False,
-                "message": "Promotion failed: volunteer is not marked as trusted.",
-                "volunteer": volunteer.without_password(),
-            }
+            raise ValueError("Volunteer is not certified and trusted.")
 
-        updated_volunteer = update_user_role(
-            user_id=volunteer_id,
-            new_role="coordinator",
-            updated_at="2026-06-04 00:00:00",
-        )
+        updated_volunteer = update_user_role(volunteer_id, "coordinator")
+        return updated_volunteer.without_password()
 
-        return {
-            "success": True,
-            "message": (
-                f"{updated_volunteer.name} {updated_volunteer.surname} "
-                "has been promoted to Coordinator."
-            ),
-            "volunteer": updated_volunteer.without_password(),
-        }
+    def view_registered_users(self) -> list[dict]:
+        return list_registered_users()
 
-    def view_registered_users(self):
-        users = list_registered_users()
-
-        return {
-            "success": True,
-            "message": f"{len(users)} registered users found.",
-            "users": users,
-        }
-
-    def manage_user_role(self, target_user_id, new_role):
+    def manage_user_role(self, target_user_id: int, new_role: str) -> dict:
         target_user = get_user_by_id(target_user_id)
 
         if target_user is None:
-            return {
-                "success": False,
-                "message": "Role update failed: user was not found.",
-                "user": None,
-            }
-
+            raise ValueError("User was not found.")
         if target_user.user_id == self.user.user_id:
-            return {
-                "success": False,
-                "message": "Role update failed: System Managers cannot change their own role.",
-                "user": target_user.without_password(),
-            }
-
+            raise ValueError("System Managers cannot change their own role.")
         if new_role not in ALLOWED_ROLES:
-            return {
-                "success": False,
-                "message": f"Role update failed: '{new_role}' is not a valid role.",
-                "user": target_user.without_password(),
-            }
+            raise ValueError(f"Unsupported role: {new_role}.")
 
-        old_role = target_user.role
+        updated_user = update_user_role(target_user_id, new_role)
+        return updated_user.without_password()
 
-        if old_role == new_role:
-            return {
-                "success": True,
-                "message": f"{target_user.name} {target_user.surname} is already a {new_role}.",
-                "user": target_user.without_password(),
-            }
+    def view_active_incidents(self) -> list[dict]:
+        return list_active_incidents()
 
-        updated_user = update_user_role(
-            user_id=target_user_id,
-            new_role=new_role,
-            updated_at="2026-06-05 00:00:00",
-        )
+    def view_active_projects(self) -> list[dict]:
+        return list_active_projects()
 
-        return {
-            "success": True,
-            "message": (
-                f"{updated_user.name} {updated_user.surname} role changed "
-                f"from {old_role} to {new_role}."
-            ),
-            "user": updated_user.without_password(),
-        }
+    def view_active_volunteer_count(self) -> int:
+        return count_active_volunteers()
 
-    def view_active_incidents(self):
-        active_incidents = list_active_incidents()
+    def view_open_incident_statistics(self) -> dict:
+        return get_open_incident_statistics()
 
-        return {
-            "success": True,
-            "message": f"{len(active_incidents)} active incidents found.",
-            "incidents": active_incidents,
-        }
+    def view_average_response_times(self) -> dict:
+        return get_average_response_times()
 
-    def view_active_projects(self):
-        active_projects = list_active_projects()
+    def view_activity_graphs(self) -> dict:
+        return get_activity_graph_data()
 
-        return {
-            "success": True,
-            "message": f"{len(active_projects)} active projects found.",
-            "projects": active_projects,
-        }
+    def view_incident_heatmap(self) -> list[dict]:
+        return get_incident_heatmap_data()
 
-    def view_active_volunteer_count(self):
-        active_volunteer_count = count_active_volunteers()
+    def filter_dashboard_statistics(self, filters: dict | None = None) -> dict:
+        return get_filtered_dashboard_statistics(filters)
 
-        return {
-            "success": True,
-            "message": f"{active_volunteer_count} active volunteers found.",
-            "active_volunteer_count": active_volunteer_count,
-        }
+    def monitor_volunteer_participation(self) -> dict:
+        return get_volunteer_participation()
 
-    def view_open_incident_statistics(self):
-        statistics = get_open_incident_statistics()
+    def monitor_project_progress(self) -> dict:
+        return get_project_progress()
 
-        return {
-            "success": True,
-            "message": (
-                f"{statistics['total_open_incidents']} open incidents found, "
-                f"including {statistics['urgent_open_incidents']} urgent."
-            ),
-            "statistics": statistics,
-        }
-
-    def view_average_response_times(self):
-        response_times = get_average_response_times()
-
-        return {
-            "success": True,
-            "message": (
-                "Average incident response time is "
-                f"{response_times['average_response_time_minutes']} minutes."
-            ),
-            "response_times": response_times,
-        }
-
-    def view_activity_graphs(self):
-        graph_data = get_activity_graph_data()
-
-        return {
-            "success": True,
-            "message": "Activity graph data loaded.",
-            "graphs": graph_data,
-        }
-
-    def view_incident_heatmap(self):
-        heatmap_points = get_incident_heatmap_data()
-
-        return {
-            "success": True,
-            "message": f"{len(heatmap_points)} heatmap points loaded.",
-            "heatmap_points": heatmap_points,
-        }
-
-    def filter_dashboard_statistics(self, filters=None):
-        statistics = get_filtered_dashboard_statistics(filters)
-
-        return {
-            "success": True,
-            "message": "Filtered dashboard statistics loaded.",
-            "statistics": statistics,
-        }
-
-    def monitor_volunteer_participation(self):
-        participation = get_volunteer_participation()
-
-        return {
-            "success": True,
-            "message": (
-                f"{participation['total_participations']} volunteer "
-                "participations found."
-            ),
-            "participation": participation,
-        }
-
-    def monitor_project_progress(self):
-        progress = get_project_progress()
-
-        return {
-            "success": True,
-            "message": f"{progress['open_project_count']} open projects found.",
-            "project_progress": progress,
-        }
-
-    def view_real_time_management_information(self):
-        management_information = get_real_time_management_information()
-
-        return {
-            "success": True,
-            "message": "Real-time management information loaded.",
-            "management_information": management_information,
-        }
+    def view_real_time_management_information(self) -> dict:
+        return get_real_time_management_information()

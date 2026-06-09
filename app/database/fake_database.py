@@ -2,7 +2,7 @@ database = {
     "Users": [
         {
             "User_id": 1,
-            "Password": "hashed_password_123",
+            "Password": "$2b$12$CtBJqcjic/EKV5dVtyFiJOl4wNPavrR1Cfzg0rXOTPxwv1mDrxRXa",
             "Name": "John",
             "Surname": "Doe",
             "Email": "john@example.com",
@@ -17,7 +17,7 @@ database = {
         },
         {
             "User_id": 2,
-            "Password": "hashed_password_456",
+            "Password": "$2b$12$ncNZ75Nt.aWgJLmV.PvSouXfvMSMoSyhEzMywahz7DmUjIqCRUq9i",
             "Name": "Jane",
             "Surname": "Smith",
             "Email": "jane@example.com",
@@ -32,7 +32,7 @@ database = {
         },
         {
             "User_id": 3,
-            "Password": "hashed_password_789",
+            "Password": "$2b$12$S1t1c2/xq96kzdGzzUNM6.qNLP29.7S7uVvr0WwqT7lCZNaIdTWbC",
             "Name": "Sam",
             "Surname": "Manager",
             "Email": "manager@example.com",
@@ -74,8 +74,8 @@ database = {
             "Title": "Flood in Sector 7",
             "Description": "Heavy rainfall causing flooding in residential area.",
             "Type": "Flood",
-            "Latitude": 40.7128,
-            "Longitude": -74.0060,
+            "Latitude": 50.3755,
+            "Longitude": -4.1427,
             "Priority": "Urgent",
             "Volunteers_helped": 5,
             "Created_at": "2023-10-27 08:00:00",
@@ -90,8 +90,8 @@ database = {
             "Title": "Power Outage",
             "Description": "Main grid down in downtown.",
             "Type": "Other",
-            "Latitude": 40.7306,
-            "Longitude": -73.9352,
+            "Latitude": 50.3851,
+            "Longitude": -4.1247,
             "Priority": "Medium",
             "Volunteers_helped": 0,
             "Created_at": "2023-10-27 09:30:00",

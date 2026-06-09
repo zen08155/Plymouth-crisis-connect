@@ -1,173 +1,209 @@
-from models.SystemManager import SystemManager
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+
+from app.core.auth import create_session, require_system_manager, revoke_session
+from app.models.SystemManager import SystemManager
+from app.schemas.system_manager import (
+    ApiResponse,
+    DashboardFilters,
+    LoginRequest,
+    RoleUpdateRequest,
+)
 
 
-def login_system_manager(email, password):
-    return SystemManager.login(email, password)
+router = APIRouter(prefix="/api/system-manager", tags=["System Manager"])
+security = HTTPBearer()
 
 
-def promote_volunteer(manager_id, volunteer_id):
+def _manager(manager_id: int) -> SystemManager:
     try:
-        system_manager = SystemManager(user_id=manager_id)
-        return system_manager.promote_volunteer_to_coordinator(volunteer_id)
+        return SystemManager(manager_id)
     except (PermissionError, ValueError) as error:
-        return {
-            "success": False,
-            "message": f"Promotion failed: {error}",
-            "volunteer": None,
-        }
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=str(error),
+        ) from error
 
 
-def view_registered_users(manager_id):
+def _execute(action, message: str):
     try:
-        system_manager = SystemManager(user_id=manager_id)
-        return system_manager.view_registered_users()
-    except (PermissionError, ValueError) as error:
-        return {
-            "success": False,
-            "message": f"Could not load users: {error}",
-            "users": [],
-        }
+        return ApiResponse(success=True, message=message, data=action())
+    except ValueError as error:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(error),
+        ) from error
 
 
-def manage_user_role(manager_id, target_user_id, new_role):
+@router.post("/login", response_model=ApiResponse)
+def login_system_manager(payload: LoginRequest):
     try:
-        system_manager = SystemManager(user_id=manager_id)
-        return system_manager.manage_user_role(target_user_id, new_role)
-    except (PermissionError, ValueError) as error:
-        return {
-            "success": False,
-            "message": f"Role update failed: {error}",
-            "user": None,
-        }
+        user = SystemManager.login(payload.email, payload.password)
+    except PermissionError as error:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=str(error),
+        ) from error
+
+    token = create_session(user.user_id)
+    return ApiResponse(
+        success=True,
+        message="System Manager logged in successfully.",
+        data={"token": token, "user": user.without_password()},
+    )
 
 
-def view_active_incidents(manager_id):
-    try:
-        system_manager = SystemManager(user_id=manager_id)
-        return system_manager.view_active_incidents()
-    except (PermissionError, ValueError) as error:
-        return {
-            "success": False,
-            "message": f"Could not load active incidents: {error}",
-            "incidents": [],
-        }
+@router.post("/logout", response_model=ApiResponse)
+def logout_system_manager(
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    manager_id: int = Depends(require_system_manager),
+):
+    revoke_session(credentials.credentials)
+    return ApiResponse(
+        success=True,
+        message="System Manager logged out.",
+        data={"user_id": manager_id},
+    )
 
 
-def view_active_projects(manager_id):
-    try:
-        system_manager = SystemManager(user_id=manager_id)
-        return system_manager.view_active_projects()
-    except (PermissionError, ValueError) as error:
-        return {
-            "success": False,
-            "message": f"Could not load active projects: {error}",
-            "projects": [],
-        }
+@router.get("/users", response_model=ApiResponse)
+def view_registered_users(manager_id: int = Depends(require_system_manager)):
+    return _execute(
+        _manager(manager_id).view_registered_users,
+        "Registered users loaded.",
+    )
 
 
-def view_active_volunteer_count(manager_id):
-    try:
-        system_manager = SystemManager(user_id=manager_id)
-        return system_manager.view_active_volunteer_count()
-    except (PermissionError, ValueError) as error:
-        return {
-            "success": False,
-            "message": f"Could not load active volunteer count: {error}",
-            "active_volunteer_count": 0,
-        }
+@router.post("/users/{volunteer_id}/promote", response_model=ApiResponse)
+def promote_volunteer(
+    volunteer_id: int,
+    manager_id: int = Depends(require_system_manager),
+):
+    return _execute(
+        lambda: _manager(manager_id).promote_volunteer_to_coordinator(volunteer_id),
+        "Volunteer promoted to Coordinator.",
+    )
 
 
-def view_open_incident_statistics(manager_id):
-    try:
-        system_manager = SystemManager(user_id=manager_id)
-        return system_manager.view_open_incident_statistics()
-    except (PermissionError, ValueError) as error:
-        return {
-            "success": False,
-            "message": f"Could not load open incident statistics: {error}",
-            "statistics": {},
-        }
+@router.patch("/users/{user_id}/role", response_model=ApiResponse)
+def manage_user_role(
+    user_id: int,
+    payload: RoleUpdateRequest,
+    manager_id: int = Depends(require_system_manager),
+):
+    return _execute(
+        lambda: _manager(manager_id).manage_user_role(user_id, payload.role),
+        "User role updated.",
+    )
 
 
-def view_average_response_times(manager_id):
-    try:
-        system_manager = SystemManager(user_id=manager_id)
-        return system_manager.view_average_response_times()
-    except (PermissionError, ValueError) as error:
-        return {
-            "success": False,
-            "message": f"Could not load average response times: {error}",
-            "response_times": {},
-        }
+@router.get("/incidents/active", response_model=ApiResponse)
+def view_active_incidents(manager_id: int = Depends(require_system_manager)):
+    return _execute(
+        _manager(manager_id).view_active_incidents,
+        "Active incidents loaded.",
+    )
 
 
-def view_activity_graphs(manager_id):
-    try:
-        system_manager = SystemManager(user_id=manager_id)
-        return system_manager.view_activity_graphs()
-    except (PermissionError, ValueError) as error:
-        return {
-            "success": False,
-            "message": f"Could not load activity graphs: {error}",
-            "graphs": {},
-        }
+@router.get("/projects/active", response_model=ApiResponse)
+def view_active_projects(manager_id: int = Depends(require_system_manager)):
+    return _execute(
+        _manager(manager_id).view_active_projects,
+        "Active projects loaded.",
+    )
 
 
-def view_incident_heatmap(manager_id):
-    try:
-        system_manager = SystemManager(user_id=manager_id)
-        return system_manager.view_incident_heatmap()
-    except (PermissionError, ValueError) as error:
-        return {
-            "success": False,
-            "message": f"Could not load incident heatmap: {error}",
-            "heatmap_points": [],
-        }
+@router.get("/volunteers/active-count", response_model=ApiResponse)
+def view_active_volunteer_count(
+    manager_id: int = Depends(require_system_manager),
+):
+    return _execute(
+        _manager(manager_id).view_active_volunteer_count,
+        "Active volunteer count loaded.",
+    )
 
 
-def filter_dashboard_statistics(manager_id, filters=None):
-    try:
-        system_manager = SystemManager(user_id=manager_id)
-        return system_manager.filter_dashboard_statistics(filters)
-    except (PermissionError, ValueError) as error:
-        return {
-            "success": False,
-            "message": f"Could not filter dashboard statistics: {error}",
-            "statistics": {},
-        }
+@router.get("/dashboard/open-incidents", response_model=ApiResponse)
+def view_open_incident_statistics(
+    manager_id: int = Depends(require_system_manager),
+):
+    return _execute(
+        _manager(manager_id).view_open_incident_statistics,
+        "Open incident statistics loaded.",
+    )
 
 
-def monitor_volunteer_participation(manager_id):
-    try:
-        system_manager = SystemManager(user_id=manager_id)
-        return system_manager.monitor_volunteer_participation()
-    except (PermissionError, ValueError) as error:
-        return {
-            "success": False,
-            "message": f"Could not load volunteer participation: {error}",
-            "participation": {},
-        }
+@router.get("/dashboard/response-times", response_model=ApiResponse)
+def view_average_response_times(
+    manager_id: int = Depends(require_system_manager),
+):
+    return _execute(
+        _manager(manager_id).view_average_response_times,
+        "Average response times loaded.",
+    )
 
 
-def monitor_project_progress(manager_id):
-    try:
-        system_manager = SystemManager(user_id=manager_id)
-        return system_manager.monitor_project_progress()
-    except (PermissionError, ValueError) as error:
-        return {
-            "success": False,
-            "message": f"Could not load project progress: {error}",
-            "project_progress": {},
-        }
+@router.get("/dashboard/activity", response_model=ApiResponse)
+def view_activity_graphs(manager_id: int = Depends(require_system_manager)):
+    return _execute(
+        _manager(manager_id).view_activity_graphs,
+        "Activity graph data loaded.",
+    )
 
 
-def view_real_time_management_information(manager_id):
-    try:
-        system_manager = SystemManager(user_id=manager_id)
-        return system_manager.view_real_time_management_information()
-    except (PermissionError, ValueError) as error:
-        return {
-            "success": False,
-            "message": f"Could not load real-time management information: {error}",
-            "management_information": {},
-        }
+@router.get("/dashboard/heatmap", response_model=ApiResponse)
+def view_incident_heatmap(manager_id: int = Depends(require_system_manager)):
+    return _execute(
+        _manager(manager_id).view_incident_heatmap,
+        "Incident heatmap data loaded.",
+    )
+
+
+@router.get("/dashboard/statistics", response_model=ApiResponse)
+def filter_dashboard_statistics(
+    incident_type: str | None = Query(default=None),
+    priority: str | None = Query(default=None),
+    is_project: bool | None = Query(default=None),
+    is_open: bool | None = Query(default=None),
+    manager_id: int = Depends(require_system_manager),
+):
+    filters = DashboardFilters(
+        incident_type=incident_type,
+        priority=priority,
+        is_project=is_project,
+        is_open=is_open,
+    ).to_repository_filters()
+    return _execute(
+        lambda: _manager(manager_id).filter_dashboard_statistics(filters),
+        "Filtered dashboard statistics loaded.",
+    )
+
+
+@router.get("/dashboard/volunteer-participation", response_model=ApiResponse)
+def monitor_volunteer_participation(
+    manager_id: int = Depends(require_system_manager),
+):
+    return _execute(
+        _manager(manager_id).monitor_volunteer_participation,
+        "Volunteer participation loaded.",
+    )
+
+
+@router.get("/dashboard/project-progress", response_model=ApiResponse)
+def monitor_project_progress(
+    manager_id: int = Depends(require_system_manager),
+):
+    return _execute(
+        _manager(manager_id).monitor_project_progress,
+        "Project progress loaded.",
+    )
+
+
+@router.get("/dashboard/realtime", response_model=ApiResponse)
+def view_real_time_management_information(
+    manager_id: int = Depends(require_system_manager),
+):
+    return _execute(
+        _manager(manager_id).view_real_time_management_information,
+        "Real-time management information loaded.",
+    )

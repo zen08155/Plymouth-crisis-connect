@@ -113,7 +113,7 @@ export default function TasksMap() {
       {/* ── Nav ── */}
       <nav className="tm2-nav">
         <a href="/" className="tm2-logo-link"><Logo height={40} /></a>
-        <button className="tm2-user-btn" onClick={() => navigate('/login')} aria-label="Account">
+        <button className="tm2-user-btn" onClick={() => navigate('/profile')} aria-label="Account">
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none"
                stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/>

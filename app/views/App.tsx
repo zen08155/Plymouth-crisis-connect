@@ -5,9 +5,10 @@ import Footer from './components/Footer';
 import Home from './pages/Home';
 import Login from './pages/Login';
 import Register from './pages/Register';
-import VerifyPhone from './pages/VerifyPhone';
 import TasksMap from './pages/TasksMap';
 import TaskDescription from './pages/TaskDescription';
+import ManagerDashboard from './pages/ManagerDashboard';
+import Profile from './pages/Profile';
 
 export default function App() {
   return (
@@ -25,9 +26,10 @@ export default function App() {
         />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
-        <Route path="/verify-phone" element={<VerifyPhone />} />
         <Route path="/tasks" element={<TasksMap />} />
         <Route path="/task-description" element={<TaskDescription />} />
+        <Route path="/manager" element={<ManagerDashboard />} />
+        <Route path="/profile" element={<Profile />} />
       </Routes>
     </BrowserRouter>
   );

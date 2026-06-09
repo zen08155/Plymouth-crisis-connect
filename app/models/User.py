@@ -1,5 +1,5 @@
 class User:
-    def __init__(self, user_data):
+    def __init__(self, user_data: dict):
         self.data = user_data
 
     @property
