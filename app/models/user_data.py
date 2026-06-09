@@ -19,7 +19,7 @@ class UserData:
                  role: str,
                  status: str,
                  created_at: datetime = datetime.now(),
-                 updated_at: datetime = datetime.now(),
+                 updated_at: datetime | None = None,
                  is_active: bool = True,
                  avg_response_time : datetime | None = None,
                  push_notifications : bool = False,
@@ -33,8 +33,8 @@ class UserData:
         self.phone = phone_number
         self.birthday = birthday
         self.role = role
-        self.created_at = created_at or datetime.now()
-        self.updated_at = updated_at or datetime.now()
+        self.created_at = created_at
+        self.updated_at = updated_at
         self.is_active = is_active
         self.avg_response_time = avg_response_time #to be calculated later on...
         self.push_notifications_enabled = push_notifications
