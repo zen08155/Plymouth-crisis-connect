@@ -25,14 +25,14 @@ class CoordinatorRepository:
         Returns:
             bool: on success/failure
         """
-        sql = "INSERT INTO incidents (title, description, type, importantData, importantDataExtra, latitude, longitude, priority, createdAt, createdBy) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"
+        sql = "INSERT INTO incidents (title, description, type, importantData, importantDataExtra, latitude, longitude, priority, status, createdAt, createdBy) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"
         sql_notifs = "INSERT INTO incidentnotification(incidentId, title, sentAt) VALUES (%s, %s, %s)"
         current_time = datetime.now()
 
         try : 
             conn = Database.get_connection()
             cursor = conn.cursor()
-            cursor.execute(sql, (incident.title, incident.description, incident.type, incident.important_data, incident.important_data_extra, incident.latitude, incident.longitude, incident.priority, current_time, coordinator_id))
+            cursor.execute(sql, (incident.title, incident.description, incident.type, incident.important_data, incident.important_data_extra, incident.latitude, incident.longitude, incident.priority, incident.status, current_time, coordinator_id))
 
             #creates the notification
             incident_id = cursor.lastrowid

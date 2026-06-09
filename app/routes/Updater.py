@@ -1,10 +1,7 @@
 from decimal import *
-from datetime import datetime
 from typing import Optional
-from fastapi import APIRouter, FastAPI
+from fastapi import APIRouter
 from pydantic import BaseModel
-from decimal import Decimal
-from datetime import datetime
 from app.repositories.coordinator_repository import CoordinatorRepository
 
 

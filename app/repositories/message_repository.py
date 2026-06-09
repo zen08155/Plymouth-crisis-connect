@@ -1,8 +1,8 @@
 from app.models.message import Message
 from database.Connection import Database
 from datetime import datetime
-import json
 from typing import Any
+import json
 
 class MessageRepository:
     def send_message(msg : Message) -> bool:

@@ -20,12 +20,12 @@ class Incident(BaseModel):
     latitude : Decimal
     longitude : Decimal
     priority : str
+    status: bool = True
     created_at : datetime | None = None
     created_by : int | None = None
     ended_at : datetime | None = None
     ended_by : int | None = None
-    notification_id : int | None = None
-    incident_id : int | None = None
+
 
 
 
