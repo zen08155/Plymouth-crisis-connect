@@ -63,5 +63,6 @@ class UserSkills(BaseModel):
     course_taken_at: date | None = None
 
 @router.post("user/skills")
-def set_skills(skills: UserSkills)
+def set_skills(skills: UserSkills):
+    print(skills)
 #endregion
