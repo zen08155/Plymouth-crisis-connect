@@ -9,9 +9,7 @@ from datetime import datetime
 class CoordinatorRepository:
     def __close_connection(self, conn, cursor):
         if cursor: cursor.close()
-        if conn: conn.close()
-        
-
+        if conn: conn.close()  
     def __print_rollback(self, e, conn) -> bool:
         print("error: " + str(e))
         conn.rollback()

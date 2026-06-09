@@ -7,7 +7,7 @@ class Task:
             description : str,
             priority: str,
             createdAt: datetime = datetime.now(),
-            UpdatedAt: datetime = datetime.now(),
+            UpdatedAt: datetime | None = None,
             IsActive: bool = True
             ):
         self.team_id = teamId
