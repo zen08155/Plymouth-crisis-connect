@@ -1,5 +1,5 @@
 from app.models.message import Message
-from app.database.database_connection import Database
+from database.Connection import Database
 from datetime import datetime
 
 class MessageRepository:

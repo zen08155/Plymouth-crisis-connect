@@ -3,7 +3,7 @@ import requests
 from decimal import *
 from app.models.incident import Incident
 from app.models.tasks import Task
-from app.database.database_connection import Database
+from database.Connection import Database
 from datetime import datetime
 
 class CoordinatorRepository:
