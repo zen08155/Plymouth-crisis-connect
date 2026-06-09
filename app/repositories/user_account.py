@@ -94,7 +94,7 @@ class UserAccount:
         finally:
             if conn: conn.close()
 
-    def set_skills(self, skills: UserSkills) -> None:
+    def set_skills(self, skills: UserSkills) -> bool:
         """Sets skills for User in database, also connects the skills and user in volunteerSkills.
 
         Args:
@@ -102,6 +102,9 @@ class UserAccount:
 
         Raises:
             ValueError: throws exception when the user_id is invalid.
+
+        Returns:
+            bool: on success/failure
         """
         sql = "INSERT INTO skills (title, description, skillType, skillDescription, certificateName, expirationDateCertificate, courseTakenAt) VALUES (%s, %s, %s, %s, %s, %s %s, %s)"
         sql_volunteerskill = "INSERT INTO volunteerSkills(skillId, userId) VALUES (%s, %s)"
@@ -117,12 +120,16 @@ class UserAccount:
             skill_id = cursor.lastrowid
             cursor.execute(sql_volunteerskill, (self.__user_id, skill_id))
             conn.commit()
+            return True
 
         except Exception as e:
             print("error: " + str(e))
+            conn.rollback()
+            return False
 
         finally: 
             conn.close()
+            cursor.close()
 
     def volunteer_for_team(self, user_id : int, team_id : int) -> None:
         """User assigns themselves to a (main/general) team of an incident, to more specialized teams the coordinator will have to assign them
