@@ -1,5 +1,5 @@
-from database.fake_database import database
-from models.User import User
+from app.database.fake_database import database
+from app.models.User import User
 
 
 ALLOWED_ROLES = ["volunteer", "coordinator", "system_manager"]

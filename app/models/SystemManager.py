@@ -1,4 +1,4 @@
-from repositories.user_repository import (
+from app.repositories.user_repository import (
     ALLOWED_ROLES,
     authenticate_system_manager,
     count_active_volunteers,

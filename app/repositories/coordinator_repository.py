@@ -214,6 +214,30 @@ class CoordinatorRepository:
 
         return latitude, longitude
 
+
+
+    def update_priority(self, incident_id : int, priority : str) -> bool:
+        incident = self.get_by_id(incident_id)
+
+        if not incident:
+            return False
+
+        incident.priority = priority
+        self.save(incident)
+        return True
+
+
+
+    def update_description(self, incident_id : int, description : str) -> bool:
+        incident = self.get_by_id(incident_id)
+
+        if not incident:
+            return False
+
+        incident.description = description
+        self.save(incident)
+        return True
+
     def create_task(self, task : Task) ->bool:
         """Creates a task and assign to team, inserts in database
 

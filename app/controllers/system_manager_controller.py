@@ -1,4 +1,4 @@
-from models.SystemManager import SystemManager
+from app.models.SystemManager import SystemManager
 
 
 def login_system_manager(email, password):
