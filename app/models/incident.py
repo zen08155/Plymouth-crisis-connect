@@ -12,6 +12,7 @@ class Incident:
             latitude : Decimal,
             longitude : Decimal,
             priority : str,
+            status : bool,
             created_at : datetime | None = None,
             created_by : int | None = None,
             ended_at : datetime | None = None,
