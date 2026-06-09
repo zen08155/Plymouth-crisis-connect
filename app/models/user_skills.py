@@ -8,7 +8,7 @@ class UserSkills:
                  description : str,
                  skill_type : str,
                  skill_description : str | None = None,
-                 proof_of_certificate : str | None = None, #FIXME: pdf, image, idk
+                 proof_of_certificate : str | None = None,
                  name_of_certificate : str | None = None,
                  expiration_date_certificate : date | None = None,
                  course_taken_at : date | None = None
@@ -48,5 +48,6 @@ class UserSkills:
             if not all(required):
                 raise ValueError("Certificate information is required")
         
+        # TODO: add setters
         
      
