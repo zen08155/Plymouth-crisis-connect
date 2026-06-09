@@ -2,10 +2,18 @@
 import requests
 from decimal import *
 from app.models.incident import Incident
-from app.database.database_connection import Database
+from app.models.tasks import Task
+from database.Connection import Database
 from datetime import datetime
 
 class CoordinatorRepository:
+    def __close_connection(self, conn, cursor):
+        if cursor: cursor.close()
+        if conn: conn.close()  
+    def __print_rollback(self, e, conn) -> bool:
+        print("error: " + str(e))
+        conn.rollback()
+        return False
     
     def create_incident(self, incident : Incident, coordinator_id : int) -> bool:
         """Creates an incident and immediatelly sends out a notification using the created incident
@@ -39,13 +47,25 @@ class CoordinatorRepository:
             return True
              
         except Exception as e:
-            print("error: " + str(e))
-            conn.rollback()
-            return False
-        
-        finally: conn.close()
+            return self.__print_rollback(e, conn)
+        finally:
+            self.__close_connection(conn, cursor)
 
-    def create_team(self, incidentId : int, coordinator_id : int, team_leader_id : int, name : str, task : str = "", createdAt : datetime = datetime.now(), is_active : bool = True):
+    def create_team(self, incidentId : int, coordinator_id : int, team_leader_id : int, name : str, task : str = "", createdAt : datetime = datetime.now(), is_active : bool = True) -> bool:
+        """Creates a team
+
+        Args:
+            incidentId (int)
+            coordinator_id (int): id of the coordinator who created the team
+            team_leader_id (int): if there's no teamleader the value is -1
+            name (str): team name
+            task (str, optional): Task description. Defaults to "".
+            createdAt (datetime, optional): task creation date. Defaults to datetime.now().
+            is_active (bool, optional): whether the task is still active. Defaults to True.
+
+        Returns:
+            bool: on success/failure
+        """
         sql = "INSERT INTO team (incidentId, coordinatorId, teamLeaderId, name, task, createdAt, isActive) VALUES(%s, %s, %s, %s, %s, %s, %s)"
 
         try:
@@ -55,10 +75,10 @@ class CoordinatorRepository:
             conn.commit()
             return True
         except Exception as e:
-            print("error: " + str(e))
-            conn.rollback()
-            return False
-            
+            return self.__print_rollback(e, conn)
+        finally:
+            self.__close_connection(conn, cursor)
+
     def close_incident(self, coordinator_id : int, incident_id : int) -> bool:
         """Updates the incident with an endedAt and endedBy
 
@@ -80,12 +100,9 @@ class CoordinatorRepository:
             return True
 
         except Exception as e:
-            print("error: " + str(e))  
-            conn.rollback()
-            return False
-
-        finally: 
-            conn.close()  
+            return self.__print_rollback(e, conn)
+        finally:
+            self.__close_connection(conn, cursor)
 
     def add_volunteer_to_team(self, volunteer_id : int, team_id : int) ->bool :
         """read method name
@@ -105,13 +122,11 @@ class CoordinatorRepository:
             cursor.execute(sql, (team_id, volunteer_id))
             conn.commit()
             return True
-
+        
         except Exception as e:
-            print("error: " + str(e))
-            conn.rollback()
-            return False
-
-        finally: conn.close()
+            return self.__print_rollback(e, conn)
+        finally:
+            self.__close_connection(conn, cursor)
 
     def remove_volunteer_from_team(self, volunteer_id : int, team_id : int) -> bool:
         """Removes the volunteer from a team
@@ -132,12 +147,9 @@ class CoordinatorRepository:
             return True
 
         except Exception as e:
-            print("error: " + str(e))
-            conn.rollback()
-            return False
-
-        finally: 
-            conn.close()
+            return self.__print_rollback(e, conn)
+        finally:
+            self.__close_connection(conn, cursor)
 
     def appoint_team_lead(self, team_id : int, volunteer_id : int) -> bool:
         """Appointing a volunteer as the leader of a team
@@ -158,15 +170,12 @@ class CoordinatorRepository:
             return True
         
         except Exception as e:
-            print("error: " + str(e))
-            conn.rollback()
-            return False
-        
-        finally: 
-            conn.close()
+            return self.__print_rollback(e, conn)
+        finally:
+            self.__close_connection(conn, cursor)
 
     def convert_location_to_coords(self, location : str) -> tuple[Decimal, Decimal]:
-        """Converts location into coords, only takes street rn? idk, city and country are standard Plymouth and England
+        """Builds url using the location and runs it through an API
 
         Args:
             location (str): streetname/location
@@ -177,14 +186,24 @@ class CoordinatorRepository:
         Returns:
             tuple[Decimal, Decimal]: returns the lat and lon as a tuple
         """
-        country = "England"
         city = "Plymouth"
-        nominatim_url = f"https://nominatim.openstreetmap.org/search?q={location}%20{city}%20{country}&format=json&limit=1"
+        country = "England"
+        params = {
+            "q": f"{location} {city} {country}",
+            "format": "json",
+            "limit": 1
+        }
         header = {
             "User-Agent": "PlymouthCrisisConnect/1.0 (6043508@mborijnland.nl)"
         }
-        response = requests.get(nominatim_url, headers= header).json()
-        
+
+        response = requests.get(
+            "https://nominatim.openstreetmap.org/search",
+            params=params,
+            headers=header,
+            timeout=5
+        ).json()
+
         if not response:
             raise Exception("No coordinates found for location")
 
@@ -194,6 +213,29 @@ class CoordinatorRepository:
         longitude = Decimal(first["lon"])
 
         return latitude, longitude
+
+    def create_task(self, task : Task) ->bool:
+        """Creates a task and assign to team, inserts in database
+
+        Args:
+            task (Task): Task object
+
+        Returns:
+            bool: on success/failure
+        """
+        sql = "INSERT INTO tasks (teamId, name, description, priority, createdAt, updatedAt, IsActive) VALUES (%s, %s, %s, %s, %s, %s, %s)"
+
+        try:
+            conn =  Database.get_connection()
+            cursor = conn.cursor()
+            cursor.execute(sql, (task.team_id, task.name, task.description, task.priority, task.created_at, task.updated_at, task.is_active))
+            conn.commit()
+            return True
+        
+        except Exception as e:
+            return self.__print_rollback(e, conn)
+        finally:
+            self.__close_connection(conn, cursor)
 
 #TESTING
 # admin_id = 2
@@ -209,6 +251,8 @@ class CoordinatorRepository:
 # lat, lon = adm.convert_location_to_coords("Royal Parade")
 # print(lat)
 # print(lon)
+# task = Task(1, "sweep leaves", "sweep sum leaves", "urgent")
+# print(adm.create_task(task))
     
 
 
