@@ -65,30 +65,28 @@ class UserAccount:
             
             pw_byte = row["password"].encode()
 
-            if bcrypt.checkpw(password.encode(), pw_byte) :
-                cursor.execute(sql_id, (email,))
-                row = cursor.fetchone()
-                self.__user_id = row["userId"]
-                
-                return UserData(hashed_password=row["password"],
-                            name=row["name"],
-                            surname=row["surname"],
-                            email=row["email"],
-                            phone_number=row["phoneNumber"],
-                            birthday=row["birthday"],
-                            role=row["role"],
-                            created_at=row["createdAt"],
-                            updated_at=row["createdAt"],
-                            is_active=row["isActive"],
-                            avg_response_time=row["avgResponseTimeMins"],
-                            push_notifications=row["pushNotifications"],
-                            id=row["userId"],
-                            status=row["status"]
-                            )
-            else:
-                print("User not found.")
+            if not bcrypt.checkpw(password.encode(), pw_byte) :
                 return None
-                
+            cursor.execute(sql_id, (email,))
+            row = cursor.fetchone()
+            self.__user_id = row["userId"]
+            
+            return UserData(hashed_password=row["password"],
+                        name=row["name"],
+                        surname=row["surname"],
+                        email=row["email"],
+                        phone_number=row["phoneNumber"],
+                        birthday=row["birthday"],
+                        role=row["role"],
+                        created_at=row["createdAt"],
+                        updated_at=row["updatedAt"],
+                        is_active=row["isActive"],
+                        avg_response_time=row["avgResponseTimeMins"],
+                        push_notifications=row["pushNotifications"],
+                        id=row["userId"],
+                        status=row["status"]
+                        )
+           
         except Exception as e:
             print("error: " + str(e))
             return None
