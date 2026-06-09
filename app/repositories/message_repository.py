@@ -1,6 +1,8 @@
 from app.models.message import Message
 from database.Connection import Database
 from datetime import datetime
+import json
+from typing import Any
 
 class MessageRepository:
     def send_message(msg : Message) -> bool:
@@ -50,3 +52,11 @@ class MessageRepository:
         finally:
             if cursor: cursor.close()
             if conn: conn.close()
+
+    def get_all_messages(team_id : int) -> Any :
+        sql = "SELECT * FROM message WHERE teamId = %s"
+        conn = Database.get_connection()
+        cursor = conn.cursor()
+        cursor.execute(sql, (team_id))
+        msgs = cursor.fetchAll()
+        return json.dump(msgs)

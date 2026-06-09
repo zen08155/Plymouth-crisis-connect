@@ -175,7 +175,7 @@ class CoordinatorRepository:
             self.__close_connection(conn, cursor)
 
     def convert_location_to_coords(self, location : str) -> tuple[Decimal, Decimal]:
-        """Converts location into coords, only takes street rn? idk, city and country are standard Plymouth and England
+        """Builds url using the location and runs it through an API
 
         Args:
             location (str): streetname/location
@@ -186,14 +186,24 @@ class CoordinatorRepository:
         Returns:
             tuple[Decimal, Decimal]: returns the lat and lon as a tuple
         """
-        country = "England"
         city = "Plymouth"
-        nominatim_url = f"https://nominatim.openstreetmap.org/search?q={location}%20{city}%20{country}&format=json&limit=1"
+        country = "England"
+        params = {
+            "q": f"{location} {city} {country}",
+            "format": "json",
+            "limit": 1
+        }
         header = {
             "User-Agent": "PlymouthCrisisConnect/1.0 (6043508@mborijnland.nl)"
         }
-        response = requests.get(nominatim_url, headers= header).json()
-        
+
+        response = requests.get(
+            "https://nominatim.openstreetmap.org/search",
+            params=params,
+            headers=header,
+            timeout=5
+        ).json()
+
         if not response:
             raise Exception("No coordinates found for location")
 
