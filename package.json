@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "vite --host 0.0.0.0",
     "build": "vite build",
-    "preview": "vite preview --host 0.0.0.0"
+    "preview": "vite preview --host 0.0.0.0",
+    "serve:app": "npm run build && python app/api_server.py"
   },
   "dependencies": {
     "@types/leaflet": "^1.9.21",
