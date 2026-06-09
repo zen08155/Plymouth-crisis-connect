@@ -3,7 +3,38 @@ services:
     build: .
     ports:
       - "5000:5000"
+    depends_on:
+      sql:
+        condition: service_healthy
+    environment:
+      DB_HOST: sql
+      DB_PORT: 3306
+      DB_NAME: plymouth
+      DB_USER: root
+      DB_PASSWORD: root
     volumes:
       - .:/app
       - /app/node_modules
-    command: npm run dev
+    command: sh -c "npm install && npm run dev"
+
+  sql:
+    image: mysql:8.4
+    ports:
+      - "3306:3306"
+    environment:
+      MYSQL_DATABASE: plymouthCrisis
+      MYSQL_USER: root
+      MYSQL_PASSWORD: root
+      MYSQL_ROOT_PASSWORD: root
+    volumes:
+      - sql_data:/var/lib/mysql
+      - ./database/mysql/create_tables.sql:/docker-entrypoint-initdb.d/01-create-tables.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost -uroot -p$${MYSQL_ROOT_PASSWORD}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+volumes:
+  sql_data:
