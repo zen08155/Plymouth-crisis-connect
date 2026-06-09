@@ -1,5 +1,5 @@
 import bcrypt
-from app.database.database_connection import Database
+from database.Connection import Database
 from app.models.user_data import UserData
 from app.models.user_skills import UserSkills
 from datetime import date
