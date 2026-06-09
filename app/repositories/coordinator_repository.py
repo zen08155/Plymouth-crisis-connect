@@ -44,9 +44,25 @@ class CoordinatorRepository:
             conn.rollback()
             return False
         
-        finally: conn.close()
+        finally:
+            if cursor: cursor.close
+            if conn: conn.close()
 
-    def create_team(self, incidentId : int, coordinator_id : int, team_leader_id : int, name : str, task : str = "", createdAt : datetime = datetime.now(), is_active : bool = True):
+    def create_team(self, incidentId : int, coordinator_id : int, team_leader_id : int, name : str, task : str = "", createdAt : datetime = datetime.now(), is_active : bool = True) -> bool:
+        """Creates a team
+
+        Args:
+            incidentId (int)
+            coordinator_id (int): id of the coordinator who created the team
+            team_leader_id (int): if there's no teamleader the value is -1
+            name (str): team name
+            task (str, optional): Task description. Defaults to "".
+            createdAt (datetime, optional): task creation date. Defaults to datetime.now().
+            is_active (bool, optional): whether the task is still active. Defaults to True.
+
+        Returns:
+            bool: on success/failure
+        """
         sql = "INSERT INTO team (incidentId, coordinatorId, teamLeaderId, name, task, createdAt, isActive) VALUES(%s, %s, %s, %s, %s, %s, %s)"
 
         try:
@@ -59,6 +75,9 @@ class CoordinatorRepository:
             print("error: " + str(e))
             conn.rollback()
             return False
+        finally: 
+            if cursor: cursor.close
+            if conn: conn.close()
             
     def close_incident(self, coordinator_id : int, incident_id : int) -> bool:
         """Updates the incident with an endedAt and endedBy
@@ -86,7 +105,8 @@ class CoordinatorRepository:
             return False
 
         finally: 
-            conn.close()  
+            if cursor: cursor.close
+            if conn: conn.close()
 
     def add_volunteer_to_team(self, volunteer_id : int, team_id : int) ->bool :
         """read method name
@@ -112,7 +132,9 @@ class CoordinatorRepository:
             conn.rollback()
             return False
 
-        finally: conn.close()
+        finally:
+            if cursor: cursor.close
+            if conn: conn.close()
 
     def remove_volunteer_from_team(self, volunteer_id : int, team_id : int) -> bool:
         """Removes the volunteer from a team
@@ -138,7 +160,8 @@ class CoordinatorRepository:
             return False
 
         finally: 
-            conn.close()
+            if cursor: cursor.close
+            if conn: conn.close()
 
     def appoint_team_lead(self, team_id : int, volunteer_id : int) -> bool:
         """Appointing a volunteer as the leader of a team
@@ -164,7 +187,8 @@ class CoordinatorRepository:
             return False
         
         finally: 
-            conn.close()
+            if cursor: cursor.close
+            if conn: conn.close()
 
     def convert_location_to_coords(self, location : str) -> tuple[Decimal, Decimal]:
         """Converts location into coords, only takes street rn? idk, city and country are standard Plymouth and England
@@ -196,7 +220,15 @@ class CoordinatorRepository:
 
         return latitude, longitude
 
-    def assign_task_to_team(self, task : Task) ->bool:
+    def create_task(self, task : Task) ->bool:
+        """Creates a task and assign to team, inserts in database
+
+        Args:
+            task (Task): Task object
+
+        Returns:
+            bool: on success/failure
+        """
         sql = "INSERT INTO tasks (teamId, name, description, priority, createdAt, updatedAt, IsActive) VALUES (%s, %s, %s, %s, %s, %s, %s)"
 
         try:
@@ -210,10 +242,14 @@ class CoordinatorRepository:
             print("error: " + str(e))
             conn.rollback()
             return False
+        
+        finally:
+            if cursor: cursor.close
+            if conn: conn.close()
 
 #TESTING
 # admin_id = 2
-adm = CoordinatorRepository()
+# adm = CoordinatorRepository()
 
 # inc = Incident("Fire at preschool 3", "There's a fire at preschool XXX in disctrict blablablah", "bilalGoingOutside", "school-aged children, barely/not self-reliable", "", 50.4154198, -4.1225064, "urgent",)
 # adm.create_incident(inc, admin_id)
@@ -225,8 +261,8 @@ adm = CoordinatorRepository()
 # lat, lon = adm.convert_location_to_coords("Royal Parade")
 # print(lat)
 # print(lon)
-task = Task(1, "sweep leaves", "sweep sum leaves", "urgent")
-print(adm.assign_task_to_team(task))
+# task = Task(1, "sweep leaves", "sweep sum leaves", "urgent")
+# print(adm.create_task(task))
     
 
 
