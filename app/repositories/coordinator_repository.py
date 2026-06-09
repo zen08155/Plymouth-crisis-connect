@@ -7,6 +7,15 @@ from app.database.database_connection import Database
 from datetime import datetime
 
 class CoordinatorRepository:
+    def __close_connection(self, conn, cursor):
+        if cursor: cursor.close()
+        if conn: conn.close()
+        
+
+    def __print_rollback(self, e, conn) -> bool:
+        print("error: " + str(e))
+        conn.rollback()
+        return False
     
     def create_incident(self, incident : Incident, coordinator_id : int) -> bool:
         """Creates an incident and immediatelly sends out a notification using the created incident
@@ -40,13 +49,9 @@ class CoordinatorRepository:
             return True
              
         except Exception as e:
-            print("error: " + str(e))
-            conn.rollback()
-            return False
-        
+            return self.__print_rollback(e, conn)
         finally:
-            if cursor: cursor.close
-            if conn: conn.close()
+            self.__close_connection(conn, cursor)
 
     def create_team(self, incidentId : int, coordinator_id : int, team_leader_id : int, name : str, task : str = "", createdAt : datetime = datetime.now(), is_active : bool = True) -> bool:
         """Creates a team
@@ -72,13 +77,10 @@ class CoordinatorRepository:
             conn.commit()
             return True
         except Exception as e:
-            print("error: " + str(e))
-            conn.rollback()
-            return False
-        finally: 
-            if cursor: cursor.close
-            if conn: conn.close()
-            
+            return self.__print_rollback(e, conn)
+        finally:
+            self.__close_connection(conn, cursor)
+
     def close_incident(self, coordinator_id : int, incident_id : int) -> bool:
         """Updates the incident with an endedAt and endedBy
 
@@ -100,13 +102,9 @@ class CoordinatorRepository:
             return True
 
         except Exception as e:
-            print("error: " + str(e))  
-            conn.rollback()
-            return False
-
-        finally: 
-            if cursor: cursor.close
-            if conn: conn.close()
+            return self.__print_rollback(e, conn)
+        finally:
+            self.__close_connection(conn, cursor)
 
     def add_volunteer_to_team(self, volunteer_id : int, team_id : int) ->bool :
         """read method name
@@ -126,15 +124,11 @@ class CoordinatorRepository:
             cursor.execute(sql, (team_id, volunteer_id))
             conn.commit()
             return True
-
+        
         except Exception as e:
-            print("error: " + str(e))
-            conn.rollback()
-            return False
-
+            return self.__print_rollback(e, conn)
         finally:
-            if cursor: cursor.close
-            if conn: conn.close()
+            self.__close_connection(conn, cursor)
 
     def remove_volunteer_from_team(self, volunteer_id : int, team_id : int) -> bool:
         """Removes the volunteer from a team
@@ -155,13 +149,9 @@ class CoordinatorRepository:
             return True
 
         except Exception as e:
-            print("error: " + str(e))
-            conn.rollback()
-            return False
-
-        finally: 
-            if cursor: cursor.close
-            if conn: conn.close()
+            return self.__print_rollback(e, conn)
+        finally:
+            self.__close_connection(conn, cursor)
 
     def appoint_team_lead(self, team_id : int, volunteer_id : int) -> bool:
         """Appointing a volunteer as the leader of a team
@@ -182,13 +172,9 @@ class CoordinatorRepository:
             return True
         
         except Exception as e:
-            print("error: " + str(e))
-            conn.rollback()
-            return False
-        
-        finally: 
-            if cursor: cursor.close
-            if conn: conn.close()
+            return self.__print_rollback(e, conn)
+        finally:
+            self.__close_connection(conn, cursor)
 
     def convert_location_to_coords(self, location : str) -> tuple[Decimal, Decimal]:
         """Converts location into coords, only takes street rn? idk, city and country are standard Plymouth and England
@@ -239,13 +225,9 @@ class CoordinatorRepository:
             return True
         
         except Exception as e:
-            print("error: " + str(e))
-            conn.rollback()
-            return False
-        
+            return self.__print_rollback(e, conn)
         finally:
-            if cursor: cursor.close
-            if conn: conn.close()
+            self.__close_connection(conn, cursor)
 
 #TESTING
 # admin_id = 2
