@@ -1,5 +1,4 @@
 import mysql.connector
-import os
 
 class Database:
     """Singleton database connection
@@ -9,15 +8,14 @@ class Database:
     """
     _connection = None
 
-    #FIXME: use real db
     @classmethod
     def get_connection(cls):
         if cls._connection is None:
             cls._connection = mysql.connector.connect(
-                host=os.getenv("DB_HOST", "localhost"),
-                user=os.getenv("DB_USER", "root"),
-                password=os.getenv("DB_PASSWORD", ""),
-                database=os.getenv("DB_NAME", "plymouthCrisis")
+                host="127.0.0.1",
+                user="root",
+                password="root",
+                database="plymouthCrisis"
             )
 
         return cls._connection

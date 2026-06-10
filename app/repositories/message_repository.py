@@ -1,5 +1,5 @@
 from app.models.message import Message
-from database.Connection import Database
+from app.database.database_connection import Database
 from datetime import datetime
 from typing import Any
 import json
@@ -26,6 +26,8 @@ class MessageRepository:
             print(e)
             conn.rollback()
             return False
+        finally:
+            if cursor: cursor.close()
 
     def edit_message(msg_id : int, new_content : str) -> bool:
         """Edits message, updates in db with the new content and editedAt
@@ -51,7 +53,6 @@ class MessageRepository:
             return False
         finally:
             if cursor: cursor.close()
-            if conn: conn.close()
 
     def get_all_messages(team_id : int) -> Any :
         sql = "SELECT * FROM message WHERE teamId = %s"

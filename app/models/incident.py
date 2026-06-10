@@ -20,7 +20,7 @@ class Incident:
     ):
         self.title = title
         self.description = description
-        self.type = incident_type
+        self.incident_type = incident_type
         self.important_data = important_data
         self.important_data_extra = important_data_extra
         self.latitude = latitude
