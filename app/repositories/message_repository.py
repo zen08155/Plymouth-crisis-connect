@@ -5,7 +5,7 @@ from typing import Any
 import json
 
 class MessageRepository:
-    def send_message(msg : Message) -> bool:
+    def send_message(self, msg : Message) -> bool:
         """inserts msg into db
 
         Args:
@@ -14,22 +14,15 @@ class MessageRepository:
         Returns:
             bool: on success/failure
         """
-        sql = "INSERT INTO message (teamId, sentBy, content, sendAt, editedAt)"
-
-        try: 
-            conn = Database.get_connection()
-            cursor = conn.cursor()
-            cursor.execute(sql, (msg.team_id, msg.sent_by, msg.content, msg.send_at, msg.edited_at))
-            cursor.commit()
+        sql = "INSERT INTO message (teamId, sentBy, content, sendAt, editedAt) VALUES (%s, %s, %s, %s, %s)"
+        try:
+            Database.execute(sql, (msg.team_id, msg.sent_by, msg.content, msg.send_at, msg.edited_at))
             return True
         except Exception as e:
             print(e)
-            conn.rollback()
             return False
-        finally:
-            if cursor: cursor.close()
 
-    def edit_message(msg_id : int, new_content : str) -> bool:
+    def edit_message(self, msg_id : int, new_content : str) -> bool:
         """Edits message, updates in db with the new content and editedAt
 
         Args:
@@ -42,22 +35,16 @@ class MessageRepository:
         sql = "UPDATE message SET content = %s, editedAt = %s WHERE messageId = %s"
 
         try :
-            conn = Database.get_connection()
-            cursor = conn.cursor()
-            cursor.execute(sql, (new_content, datetime.now(), msg_id))
-            conn.commit()
+            Database.execute(sql, (new_content, datetime.now(), msg_id))
             return True
         except Exception as e:
             print(e)
-            conn.rollback()
             return False
-        finally:
-            if cursor: cursor.close()
 
-    def get_all_messages(team_id : int) -> Any :
+
+    def get_all_messages(self, team_id : int) -> Any :
         sql = "SELECT * FROM message WHERE teamId = %s"
         conn = Database.get_connection()
         cursor = conn.cursor()
-        cursor.execute(sql, (team_id))
-        msgs = cursor.fetchAll()
-        return json.dump(msgs)
+        cursor.execute(sql, (team_id,))
+        return cursor.fetchall()

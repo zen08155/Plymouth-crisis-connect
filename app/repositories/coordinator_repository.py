@@ -7,13 +7,6 @@ from app.database.database_connection import Database
 from datetime import datetime
 
 class CoordinatorRepository:
-    def __close_connection(self, cursor):
-        if cursor: cursor.close()
-    def __print_rollback(self, e, conn) -> bool:
-        print("error: " + str(e))
-        conn.rollback()
-        return False
-    
     def create_incident(self, incident : Incident, coordinator_id : int) -> bool:
         """Creates an incident and immediatelly sends out a notification using the created incident
 
@@ -29,24 +22,19 @@ class CoordinatorRepository:
         current_time = datetime.now()
 
         try : 
-            conn = Database.get_connection()
-            cursor = conn.cursor()
-            cursor.execute(sql, (incident.title, incident.description, incident.incident_type, incident.important_data, incident.important_data_extra, incident.latitude, incident.longitude, incident.priority, incident.status, current_time, coordinator_id))
+            cursor = Database.execute(sql, (incident.title, incident.description, incident.incident_type, incident.important_data, incident.important_data_extra, incident.latitude, incident.longitude, incident.priority, incident.status, current_time, coordinator_id))
 
             #creates the notification
             incident_id = cursor.lastrowid
-            cursor.execute(sql_notifs, (incident_id, incident.title, current_time))
-
-            conn.commit()
+            Database.execute(sql_notifs, (incident_id, incident.title, current_time))
 
             #create the main-team on incident-creation
-            self.create_team(incident_id, coordinator_id, None, "MAIN - " + incident.title)
+            self.create_team(incident_id, coordinator_id, "MAIN - " + incident.title, None)
             return True
              
         except Exception as e:
-            return self.__print_rollback(e, conn)
-        finally:
-            self.__close_connection(cursor)
+                print("error: " + str(e))
+                return False
 
     def create_team(self, incident_id : int, coordinator_id : int, name : str, team_leader_id : int | None = None, task : str = "", createdAt : datetime = datetime.now(), is_active : bool = True) -> bool:
         """Creates a team
@@ -66,15 +54,11 @@ class CoordinatorRepository:
         sql = "INSERT INTO team (incidentId, coordinatorId, teamLeaderId, name, task, createdAt, isActive) VALUES(%s, %s, %s, %s, %s, %s, %s)"
 
         try:
-            conn = Database.get_connection()
-            cursor = conn.cursor()
-            cursor.execute(sql, (incident_id, coordinator_id, team_leader_id, name, task, createdAt, is_active))
-            conn.commit()
+            Database.execute(sql, (incident_id, coordinator_id, team_leader_id, name, task, createdAt, is_active))
             return True
         except Exception as e:
-            return self.__print_rollback(e, conn)
-        finally:
-            self.__close_connection(cursor)
+                print("error: " + str(e))
+                return False
 
     def close_incident(self, coordinator_id : int, incident_id : int) -> bool:
         """Updates the incident with an endedAt and endedBy
@@ -90,16 +74,11 @@ class CoordinatorRepository:
         sql = "UPDATE incidents SET endedAt = %s, endedBy = %s WHERE incidentId = %s"
 
         try:
-            conn = Database.get_connection()
-            cursor = conn.cursor()
-            cursor.execute(sql, (datetime.now(), coordinator_id, incident_id))
-            conn.commit()
+            Database.execute(sql, (datetime.now(), coordinator_id, incident_id))
             return True
 
         except Exception as e:
-            return self.__print_rollback(e, conn)
-        finally:
-            self.__close_connection(cursor)
+            print("error: " + str(e))
 
     def add_volunteer_to_team(self, volunteer_id : int, team_id : int) ->bool :
         """read method name
@@ -114,16 +93,11 @@ class CoordinatorRepository:
         sql = "INSERT INTO volunteeringTeams (teamId, userId) VALUES (%s, %s)"
 
         try:
-            conn = Database.get_connection()    
-            cursor = conn.cursor()
-            cursor.execute(sql, (team_id, volunteer_id))
-            conn.commit()
+            Database.execute(sql, (team_id, volunteer_id))
             return True
         
         except Exception as e:
-            return self.__print_rollback(e, conn)
-        finally:
-            self.__close_connection(cursor)
+            print("error: " + str(e))
 
     def remove_volunteer_from_team(self, volunteer_id : int, team_id : int) -> bool:
         """Removes the volunteer from a team
@@ -135,18 +109,13 @@ class CoordinatorRepository:
         Returns: bool on success/failure
         """
         sql = "DELETE FROM volunteeringTeams WHERE teamId = %s AND userId = %s"
-
+        # FIXME: if it's a teamlead getting removed, set teamlead to null
         try:
-            conn = Database.get_connection()
-            cursor = conn.cursor()
-            cursor.execute(sql, (team_id, volunteer_id))
-            conn.commit()
+            Database.execute(sql, (team_id, volunteer_id))
             return True
 
         except Exception as e:
-            return self.__print_rollback(e, conn)
-        finally:
-            self.__close_connection(cursor)
+            print("error: " + str(e))
 
     def appoint_team_lead(self, team_id : int, volunteer_id : int) -> bool:
         """Appointing a volunteer as the leader of a team
@@ -160,16 +129,11 @@ class CoordinatorRepository:
         sql = "UPDATE team SET teamLeaderId = %s WHERE teamId = %s"
 
         try:
-            conn = Database.get_connection()
-            cursor = conn.cursor()
-            cursor.execute(sql, (volunteer_id, team_id))
-            conn.commit()
+            Database.execute(sql, (volunteer_id, team_id))
             return True
         
         except Exception as e:
-            return self.__print_rollback(e, conn)
-        finally:
-            self.__close_connection(cursor)
+            print("error: " + str(e))
 
     def convert_location_to_coords(self, location : str) -> tuple[Decimal, Decimal]:
         """Builds url using the location and runs it through an API
@@ -211,29 +175,23 @@ class CoordinatorRepository:
 
         return latitude, longitude
 
+    def update_priority(self, incident_id : int, priority : str) -> None:
+        sql = "UPDATE incidents SET priority = %s WHERE incidentId = %s"
+        try:
+            Database.execute(sql, (priority, incident_id))
+
+        except Exception as e:
+            print("error:" + str(e))
 
 
-    def update_priority(self, incident_id : int, priority : str) -> bool:
-        incident = self.get_by_id(incident_id)
+    def update_description(self, incident_id : int, description : str) -> None:
+        sql = "Uodate incidents SET description = %s WHERE incidentId = %s"
 
-        if not incident:
-            return False
+        try:
+            Database.execute(sql, (description, incident_id))
 
-        incident.priority = priority
-        self.save(incident)
-        return True
-
-
-
-    def update_description(self, incident_id : int, description : str) -> bool:
-        incident = self.get_by_id(incident_id)
-
-        if not incident:
-            return False
-
-        incident.description = description
-        self.save(incident)
-        return True
+        except Exception as e:
+            print("error: " + str(e))
 
     def create_task(self, task : Task) ->bool:
         """Creates a task and assign to team, inserts in database
@@ -247,16 +205,11 @@ class CoordinatorRepository:
         sql = "INSERT INTO tasks (teamId, name, description, priority, createdAt, updatedAt, IsActive) VALUES (%s, %s, %s, %s, %s, %s, %s)"
 
         try:
-            conn =  Database.get_connection()
-            cursor = conn.cursor()
-            cursor.execute(sql, (task.team_id, task.name, task.description, task.priority, task.created_at, task.updated_at, task.is_active))
-            conn.commit()
+            Database.execute(sql, (task.team_id, task.name, task.description, task.priority, task.created_at, task.updated_at, task.is_active))
             return True
         
         except Exception as e:
-            return self.__print_rollback(e, conn)
-        finally:
-            self.__close_connection(cursor)
+            print("error: " + str(e))
 
 #TESTING
 # admin_id = 2

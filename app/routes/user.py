@@ -9,6 +9,7 @@ service = UserAccount()
 @router.get("/michael")
 def test():
     return {"success" : True, "message" : "Heeee heeee"}
+
 #region register users
 @router.post("/register")
 def register(
@@ -31,8 +32,7 @@ def register(
     )
 
     if not success:
-        return {"success": False, "message": "Registration failed"}
-
+        raise HTTPException(500, "User registration failed")
     return {"success": True, "message": "Account created"}
 
 #endregion
@@ -53,7 +53,7 @@ def login(data: LoginRequests):
 
 #region setskills
 class UserSkills(BaseModel):
-    id: int | None = None
+    user_id: int
     title: str
     description: str
     skill_type: str
@@ -65,10 +65,10 @@ class UserSkills(BaseModel):
     course_taken_at: date | None = None
 
 @router.post("/skills")
-def set_skills(user_id : int, skills: UserSkills):
-    success = service.set_skills(user_id, skills)
+def set_skills(skills: UserSkills):
+    success = service.set_skills(skills.user_id, skills)
     if not success:
-        return {"success": False, "message": "Setting skills failed"}
+        raise HTTPException(500, "Setting skills failed")
     return {"success": True, "message" : "Skills set"}
 #endregion
 
@@ -81,8 +81,8 @@ class Volunteer(BaseModel):
 def volunteer_for(data: Volunteer):
     success = service.volunteer_for(data.user_id, data.incident_id)
     if not success: 
-        return {"success" : False, "message" : "Volunteering for incident failed"}
+        raise HTTPException(500, "Volunteering for incident failed")
     return {"message": "Volunteered successfully"}
 
     
-#endregion'
+#endregion
