@@ -12,9 +12,9 @@ router = APIRouter()
 
 class Teams(BaseModel):
     teamId:int
-    incidentid: int
-    coordinatorId:int
-    teamLeaderid: int
+    incident_id: int
+    coordinator_id:int
+    team_leader_id: int
     name: str
     task:str
     created_at : datetime | None = None
@@ -25,7 +25,7 @@ class Teams(BaseModel):
 
 @router.post("/teams")
 def create_team(team: Teams):
-    success = team_service.create_team(team)
+    success = team_service.create_team(team.incident_id,team.coordinator_id,team.team_leader_id,team.name,team.task,team.created_at,team.isActive)
 
     if not success:
         return {"success": False, "message": "Team creation failed"}
@@ -52,7 +52,7 @@ def remove_volunteer_from_team(volunteer_id : int, team_id : int):
     
 
 
-
+@router.post("/teams/appoint_team_lead")
 def appoint_team_lead(volunteer_id : int, team_id : int):
     success = team_service.appoint_team_lead(team_id, volunteer_id)
 
