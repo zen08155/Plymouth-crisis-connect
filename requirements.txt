@@ -1,3 +1,5 @@
 mysql-connector-python
 bcrypt
 requests
+fastapi
+uvicorn[standard]

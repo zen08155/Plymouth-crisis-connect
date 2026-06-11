@@ -41,4 +41,4 @@ npm run dev
 docker compose up --build
 ```
 
-The website will be available at `http://localhost:5000`.
+The website will be available at `http://localhost:5174`.

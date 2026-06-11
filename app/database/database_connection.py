@@ -1,4 +1,5 @@
 import mysql.connector
+import os
 
 class Database:
     """Singleton database connection
@@ -12,10 +13,11 @@ class Database:
     def get_connection(cls):
         if cls._connection is None:
             cls._connection = mysql.connector.connect(
-                host="127.0.0.1",
-                user="root",
-                password="root",
-                database="plymouthCrisis"
+                host=os.getenv("DB_HOST", "127.0.0.1"),
+                port=int(os.getenv("DB_PORT", "3306")),
+                user=os.getenv("DB_USER", "root"),
+                password=os.getenv("DB_PASSWORD", "root"),
+                database=os.getenv("DB_NAME", "plymouthCrisis"),
             )
 
         return cls._connection

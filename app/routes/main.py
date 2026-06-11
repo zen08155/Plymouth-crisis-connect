@@ -11,3 +11,7 @@ app.include_router(incident_router)
 app.include_router(message_router)
 app.include_router(teams_router)
 
+
+@app.get("/health")
+def health():
+    return {"status": "ok"}
