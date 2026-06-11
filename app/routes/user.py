@@ -10,32 +10,51 @@ service = UserAccount()
 def test():
     return {"success" : True, "message" : "Heeee heeee"}
 
-#region register users
-@router.post("/register")
-def register(
-    firstname: str,
-    surname: str,
-    password: str,
-    email: str,
-    phone_nr: str,
-    birthday: date,
-    role: str = "volunteer"
-):
+class RegisterRequest(BaseModel):
+    firstname: str
+    surname: str
+    password: str
+    email: str
+    phone_nr: str
+    birthday: date
+
+
+@router.post("/register", status_code=201)
+def register(data: RegisterRequest):
     success = service.create_account(
-        firstname,
-        surname,
-        password,
-        email,
-        phone_nr,
-        birthday,
-        role
+        data.firstname.strip(),
+        data.surname.strip(),
+        data.password,
+        data.email.strip().lower(),
+        data.phone_nr.strip(),
+        data.birthday,
+        "volunteer",
     )
 
     if not success:
-        raise HTTPException(500, "User registration failed")
-    return {"success": True, "message": "Account created"}
+        raise HTTPException(
+            status_code=409,
+            detail="An account with this email already exists or registration failed.",
+        )
 
-#endregion
+    user = service.log_in(data.email.strip().lower(), data.password)
+    if user is None:
+        raise HTTPException(
+            status_code=500,
+            detail="Account created, but automatic login failed.",
+        )
+
+    return {
+        "success": True,
+        "message": "Account created",
+        "user": {
+            "id": user.user_id,
+            "firstName": user.name,
+            "surname": user.surname,
+            "email": user.email,
+            "role": user.role,
+        },
+    }
 
 #region login
 class LoginRequests(BaseModel):
@@ -44,11 +63,19 @@ class LoginRequests(BaseModel):
 
 @router.post("/login")
 def login(data: LoginRequests):
-    user = service.log_in(data.email, data.password)
-    if user is None: 
-        raise HTTPException(status_code=401, detail="Invalid credentials")
+    user = service.log_in(data.email.strip().lower(), data.password)
+    if user is None:
+        raise HTTPException(status_code=401, detail="Invalid email or password.")
 
-    return user
+    return {
+        "user": {
+            "id": user.user_id,
+            "firstName": user.name,
+            "surname": user.surname,
+            "email": user.email,
+            "role": user.role,
+        }
+    }
 #endregion
 
 #region setskills

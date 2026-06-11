@@ -19,7 +19,7 @@ class UserAccount:
         """
         pw = password.encode()
         salt = bcrypt.gensalt()
-        hashed_pw = bcrypt.hashpw(pw, salt) 
+        hashed_pw = bcrypt.hashpw(pw, salt).decode("utf-8")
 
         user = UserData(hashed_pw, firstname, surname, email, phone_nr, birthday, role, status)
 
@@ -44,7 +44,8 @@ class UserAccount:
         Returns:
             Optional[User]: Returns an User object if login succeeds, otherwise None.
         """
-        sql = f"SELECT * FROM users WHERE email = %s"
+        sql = "SELECT * FROM users WHERE email = %s"
+        cursor = None
 
         try:
             conn = Database.get_connection()
@@ -56,7 +57,11 @@ class UserAccount:
             if row is None:
                 return None
             
-            if not bcrypt.checkpw(password.encode(), row["password"].encode()) :
+            stored_password = row["password"]
+            if isinstance(stored_password, str):
+                stored_password = stored_password.encode()
+
+            if not bcrypt.checkpw(password.encode(), stored_password):
                 return None
             
             return UserData(hashed_password=row["password"],
@@ -80,7 +85,8 @@ class UserAccount:
             return None
         
         finally:
-            if cursor: cursor.close()
+            if cursor:
+                cursor.close()
 
     def set_skills(self, user_id : int, skills: UserSkills) -> bool:
         """Sets skills for User in database, also connects the skills and user in volunteerSkills.
@@ -167,5 +173,3 @@ class UserAccount:
 
         
         
-
-

@@ -3,3 +3,6 @@ dist
 .git
 .DS_Store
 npm-debug.log
+.venv
+.pytest_cache
+**/__pycache__
