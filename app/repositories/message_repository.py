@@ -44,7 +44,16 @@ class MessageRepository:
 
     def get_all_messages(self, team_id : int) -> Any :
         sql = "SELECT * FROM message WHERE teamId = %s"
-        conn = Database.get_connection()
-        cursor = conn.cursor()
-        cursor.execute(sql, (team_id,))
-        return cursor.fetchall()
+        conn = None
+        cursor = None
+
+        try:
+            conn = Database.get_connection()
+            cursor = conn.cursor()
+            cursor.execute(sql, (team_id,))
+            return cursor.fetchall()
+        finally:
+            if cursor:
+                cursor.close()
+            if conn:
+                conn.close()

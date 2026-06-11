@@ -33,6 +33,8 @@ class CoordinatorRepository:
         finally:
             if cursor:
                 cursor.close()
+            if conn:
+                conn.close()
 
     def get_incident(self, incident_id: int) -> dict | None:
         sql = """
@@ -59,6 +61,8 @@ class CoordinatorRepository:
         finally:
             if cursor:
                 cursor.close()
+            if conn:
+                conn.close()
 
     def create_incident(self, incident : Incident, coordinator_id : int) -> int | None:
         """Creates an incident and immediatelly sends out a notification using the created incident
@@ -97,6 +101,8 @@ class CoordinatorRepository:
         finally:
             if cursor:
                 cursor.close()
+            if conn:
+                conn.close()
 
     def create_team(self, incident_id : int, coordinator_id : int, name : str, team_leader_id : int | None = None, task : str = "", createdAt : datetime = datetime.now(), is_active : bool = True) -> bool:
         """Creates a team

@@ -121,14 +121,10 @@ export async function createIncident(input: CreateIncidentInput): Promise<number
 }
 
 export async function getIncidents(): Promise<Incident[]> {
-  try {
-    const data = await request<unknown[]>('/incidents');
-    return data
-      .map(item => normalizeIncident(item as Record<string, unknown>))
-      .filter(incident => incident.status === 'open');
-  } catch {
-    return [];
-  }
+  const data = await request<unknown[]>('/incidents');
+  return data
+    .map(item => normalizeIncident(item as Record<string, unknown>))
+    .filter(incident => incident.status === 'open');
 }
 
 export async function getIncident(id: number): Promise<Incident | null> {

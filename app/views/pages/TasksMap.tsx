@@ -62,6 +62,8 @@ export default function TasksMap() {
   const mapInstance = useRef<L.Map | null>(null);
 
   const [incidents, setIncidents] = useState<Incident[]>([]);
+  const [loadingIncidents, setLoadingIncidents] = useState(true);
+  const [incidentError, setIncidentError] = useState('');
   const [selectedTypes, setSelectedTypes] = useState<Set<string>>(new Set());
   const [selectedIncident, setSelectedIncident] = useState<Incident | null>(null);
   const [verifiedCertificates, setVerifiedCertificates] = useState<Set<string>>(new Set());
@@ -85,7 +87,16 @@ export default function TasksMap() {
   }
 
   useEffect(() => {
-    getIncidents().then(setIncidents);
+    getIncidents()
+      .then(result => {
+        setIncidents(result);
+        setIncidentError('');
+      })
+      .catch(error => {
+        setIncidentError(error instanceof Error ? error.message : 'Unable to load tasks.');
+      })
+      .finally(() => setLoadingIncidents(false));
+
     if (currentRole === 'volunteer') {
       getMyCertificates()
         .then(certificates => setVerifiedCertificates(verifiedCertificateTypes(certificates)))
@@ -213,7 +224,13 @@ export default function TasksMap() {
             )}
           </div>
           <ul className="tm2-task-list">
-            {visibleIncidents.map(incident => (
+            {loadingIncidents ? (
+              <li className="tm2-task-item">Loading tasks...</li>
+            ) : incidentError ? (
+              <li className="tm2-task-item">{incidentError}</li>
+            ) : visibleIncidents.length === 0 ? (
+              <li className="tm2-task-item">No active tasks found.</li>
+            ) : visibleIncidents.map(incident => (
               <li
                 key={incident.id}
                 className={`tm2-task-item ${isLocked(incident) ? 'tm2-task-item--locked' : ''}`}

@@ -45,6 +45,7 @@ class UserAccount:
             Optional[User]: Returns an User object if login succeeds, otherwise None.
         """
         sql = "SELECT * FROM users WHERE email = %s"
+        conn = None
         cursor = None
 
         try:
@@ -87,6 +88,8 @@ class UserAccount:
         finally:
             if cursor:
                 cursor.close()
+            if conn:
+                conn.close()
 
     def can_create_incidents(self, user_id: int) -> bool:
         sql = """
@@ -94,6 +97,7 @@ class UserAccount:
             FROM users
             WHERE userId = %s
         """
+        conn = None
         cursor = None
 
         try:
@@ -109,8 +113,11 @@ class UserAccount:
         finally:
             if cursor:
                 cursor.close()
+            if conn:
+                conn.close()
 
     def get_user_role(self, user_id: int) -> str | None:
+        conn = None
         cursor = None
         try:
             conn = Database.get_connection()
@@ -124,6 +131,8 @@ class UserAccount:
         finally:
             if cursor:
                 cursor.close()
+            if conn:
+                conn.close()
 
     def submit_certificate(
         self,
@@ -167,8 +176,11 @@ class UserAccount:
         finally:
             if cursor:
                 cursor.close()
+            if conn:
+                conn.close()
 
     def list_user_certificates(self, user_id: int) -> list[dict]:
+        conn = None
         cursor = None
         try:
             conn = Database.get_connection()
@@ -190,8 +202,11 @@ class UserAccount:
         finally:
             if cursor:
                 cursor.close()
+            if conn:
+                conn.close()
 
     def list_certificate_submissions(self) -> list[dict]:
+        conn = None
         cursor = None
         try:
             conn = Database.get_connection()
@@ -219,6 +234,8 @@ class UserAccount:
         finally:
             if cursor:
                 cursor.close()
+            if conn:
+                conn.close()
 
     def review_certificate(
         self,
@@ -248,8 +265,11 @@ class UserAccount:
         finally:
             if cursor:
                 cursor.close()
+            if conn:
+                conn.close()
 
     def has_verified_certificate(self, user_id: int, certificate_type: str) -> bool:
+        conn = None
         cursor = None
         try:
             conn = Database.get_connection()
@@ -271,6 +291,8 @@ class UserAccount:
         finally:
             if cursor:
                 cursor.close()
+            if conn:
+                conn.close()
 
     def set_skills(self, user_id : int, skills: UserSkills) -> bool:
         """Sets skills for User in database, also connects the skills and user in volunteerSkills.
@@ -319,6 +341,8 @@ class UserAccount:
         sql = "INSERT INTO incidentVolunteers(incidentId, userId, joinedAt) VALUES (%s, %s, %s)"
         sql_find_team = "SELECT teamId FROM team WHERE incidentId = %s AND name LIKE 'MAIN%%' LIMIT 1"
         sql_team = "INSERT INTO volunteeringTeams (teamId, userId) VALUES (%s, %s)"
+        conn = None
+        cursor = None
 
         try: 
             conn = Database.get_connection()
@@ -343,11 +367,13 @@ class UserAccount:
 
         except Exception as e:
             print("error: " + str(e))
-            conn.rollback()
+            if conn:
+                conn.rollback()
             return False
 
         finally:
             if cursor: cursor.close()
+            if conn: conn.close()
 #TESTING
 # usr =  UserAccount()
 # print(usr.create_account("jenita2", "z", "pw", "yay@", "123", date(2000, 1, 31))) 
