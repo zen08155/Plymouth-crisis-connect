@@ -50,7 +50,6 @@ export default function AdminDashboard() {
             Approve certificates to unlock incidents that require that qualification.
           </p>
         </div>
-
         {error && <p className="ci-error" role="alert">{error}</p>}
 
         <section className="adm-section">
@@ -101,3 +100,4 @@ export default function AdminDashboard() {
     </div>
   );
 }
+

@@ -32,6 +32,13 @@ export default function Login() {
     login();
     navigate('/tasks');
   }
+  function handleAdminLogin() {
+    const token = 'eyJzdWIiOjQsImV4cCI6MTc4MTIzMjk4MH0.pcv__AfKfiDpg0LRUNlFypTV99sXf2i5FFdmca6sdsc'
+    const user = {email: "admin@adminemail.com", firstName: "root", id: 4, role: "coordinator", surname: "root"}
+    localStorage.setItem('plymouth-user', JSON.stringify({ ...user, token }));
+    login('admin'); 
+    navigate('/admin'); 
+  }
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -48,7 +55,7 @@ export default function Login() {
         }),
       });
       const payload = await response.json().catch(() => null);
-
+      console.log(payload);
       if (!response.ok) {
         throw new Error(payload?.detail || 'Unable to log in. Please try again.');
       }
@@ -165,7 +172,7 @@ export default function Login() {
             backend echte rollen levert. */}
         <button
           className="login-admin-link"
-          onClick={() => { login('admin'); navigate('/admin'); }}
+          onClick={() => { handleAdminLogin(); }}
         >
           Log in as admin (demo)
         </button>
