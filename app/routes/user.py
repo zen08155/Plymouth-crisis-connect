@@ -101,6 +101,72 @@ def login(data: LoginRequests):
 #endregion
 
 
+class ProfileUpdate(BaseModel):
+    firstName: str = Field(min_length=1, max_length=255)
+    surname: str = Field(min_length=1, max_length=255)
+    email: str = Field(min_length=3, max_length=255)
+    phone: str = Field(min_length=1, max_length=255)
+    birthday: date
+    password: str | None = Field(default=None, min_length=8, max_length=255)
+
+
+def serialize_profile(user: dict):
+    birthday = user["birthday"]
+    return {
+        "id": user["userId"],
+        "firstName": user["name"],
+        "surname": user["surname"],
+        "email": user["email"],
+        "role": user["role"],
+        "phone": user["phoneNumber"],
+        "birthday": birthday.date().isoformat()
+        if hasattr(birthday, "date")
+        else birthday.isoformat(),
+    }
+
+
+@router.get("/profile")
+def profile(authorization: str | None = Header(default=None)):
+    user_id = authenticated_user_id(authorization)
+    user = service.get_profile(user_id)
+    if user is None:
+        raise HTTPException(404, "User account not found")
+    return serialize_profile(user)
+
+
+@router.patch("/profile")
+def update_profile(
+    profile_update: ProfileUpdate,
+    authorization: str | None = Header(default=None),
+):
+    user_id = authenticated_user_id(authorization)
+    name = profile_update.firstName.strip()
+    surname = profile_update.surname.strip()
+    email = profile_update.email.strip().lower()
+    phone = profile_update.phone.strip()
+    if not all((name, surname, email, phone)):
+        raise HTTPException(422, "Name, surname, email, and phone are required.")
+
+    try:
+        user = service.update_profile(
+            user_id=user_id,
+            name=name,
+            surname=surname,
+            email=email,
+            phone_number=phone,
+            birthday=profile_update.birthday,
+            password=profile_update.password,
+        )
+    except ValueError as error:
+        if str(error) == "email_in_use":
+            raise HTTPException(409, "An account with this email already exists.")
+        raise
+
+    if user is None:
+        raise HTTPException(404, "User account not found")
+    return serialize_profile(user)
+
+
 class CertificateSubmission(BaseModel):
     certificate_type: CERTIFICATE_TYPES
     description: str = Field(min_length=3, max_length=255)

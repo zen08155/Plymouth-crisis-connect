@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import AppHeader from '../components/AppHeader';
 
 interface User {
@@ -22,7 +21,6 @@ const SETTINGS_OPTIONS = [
 ];
 
 export default function Settings() {
-  const navigate = useNavigate();
   const [usersExpanded, setUsersExpanded] = useState(false);
 
   return (
@@ -44,9 +42,6 @@ export default function Settings() {
             <span className="set-profile-dot">•</span>
             <span className="set-profile-role"></span>
           </div>
-          <button className="set-message-btn" onClick={() => navigate('/chat')}>
-            Message
-          </button>
         </div>
 
         {/* Users dropdown toggle */}

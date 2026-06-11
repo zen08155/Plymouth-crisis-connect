@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { getMyCertificates, type CertificateStatus } from '../api/certificates';
 import { useApp } from '../context/AppContext';
 
@@ -43,6 +44,9 @@ export default function StatusBanner() {
         <span className="stb-text">
           <strong>Certificate rejected</strong> — submit an updated certificate from Certificates.
         </span>
+        <Link className="stb-action" to="/skills">
+          Fill in certificate here <span aria-hidden="true">→</span>
+        </Link>
       </div>
     );
   }
@@ -53,6 +57,9 @@ export default function StatusBanner() {
       <span className="stb-text">
         <strong>No verified certificates</strong> — qualified tasks are locked until approval.
       </span>
+      <Link className="stb-action" to="/skills">
+        Fill in certificate here <span aria-hidden="true">→</span>
+      </Link>
     </div>
   );
 }

@@ -76,17 +76,27 @@ export default function TasksMap() {
   const [selectedTypes, setSelectedTypes] = useState<Set<string>>(new Set());
   const [selectedIncident, setSelectedIncident] = useState<Incident | null>(null);
   const [verifiedCertificates, setVerifiedCertificates] = useState<Set<string>>(new Set());
+  const [showEligibleOnly, setShowEligibleOnly] = useState(false);
   const [now, setNow] = useState(Date.now());
 
-  const visibleIncidents = selectedTypes.size === 0
-    ? incidents
-    : incidents.filter(incident => selectedTypes.has(incident.type));
   const isLocked = (incident: Incident) => (
     currentRole === 'volunteer'
     && Boolean(incident.requiredCertificate)
     && !verifiedCertificates.has(incident.requiredCertificate as string)
   );
   const isUpcoming = (incident: Incident) => isIncidentUpcoming(incident, now);
+  const visibleIncidents = incidents
+    .filter(incident => {
+      const matchesType = selectedTypes.size === 0 || selectedTypes.has(incident.type);
+      const canDoNow = !isLocked(incident) && !isUpcoming(incident);
+      return matchesType && (!showEligibleOnly || canDoNow);
+    })
+    .sort((first, second) => {
+      const firstRank = isLocked(first) ? 2 : isUpcoming(first) ? 1 : 0;
+      const secondRank = isLocked(second) ? 2 : isUpcoming(second) ? 1 : 0;
+      return firstRank - secondRank;
+    });
+  const activeFilterCount = selectedTypes.size + (showEligibleOnly ? 1 : 0);
 
   function toggleType(type: string): void {
     setSelectedIncident(null);
@@ -303,21 +313,81 @@ export default function TasksMap() {
         </div>
 
         <div className="tm2-filter-panel">
-          <h3 className="tm2-filter-title">Filter by type</h3>
+          <div className="tm2-filter-header">
+            <span className="tm2-filter-icon" aria-hidden="true">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
+                   stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                   strokeLinejoin="round">
+                <path d="M4 6h16M7 12h10M10 18h4"/>
+              </svg>
+            </span>
+            <span>
+              <strong>Filters</strong>
+              <small>{visibleIncidents.length} {visibleIncidents.length === 1 ? 'task' : 'tasks'} shown</small>
+            </span>
+            {activeFilterCount > 0 && (
+              <button
+                type="button"
+                className="tm2-filter-clear"
+                onClick={() => {
+                  setSelectedIncident(null);
+                  setSelectedTypes(new Set());
+                  setShowEligibleOnly(false);
+                }}
+              >
+                Reset
+              </button>
+            )}
+          </div>
+
+          {currentRole === 'volunteer' && (
+            <label className={`tm2-eligibility-filter ${showEligibleOnly ? 'tm2-eligibility-filter--active' : ''}`}>
+              <input
+                type="checkbox"
+                checked={showEligibleOnly}
+                onChange={event => {
+                  setSelectedIncident(null);
+                  setShowEligibleOnly(event.target.checked);
+                }}
+              />
+              <span>
+                <strong>Tasks I can do now</strong>
+                <small>Available and certificate matched</small>
+              </span>
+              <span className="tm2-eligibility-switch" aria-hidden="true">
+                <span />
+              </span>
+            </label>
+          )}
+
+          <div className="tm2-filter-section-heading">
+            <h3 className="tm2-filter-title">Task type</h3>
+            <span>{selectedTypes.size === 0 ? 'All' : selectedTypes.size}</span>
+          </div>
           <ul className="tm2-filter-list">
-            {INCIDENT_TYPES.map(type => (
-              <li key={type} className="tm2-filter-item">
-                <label>
-                  <input
-                    type="checkbox"
-                    checked={selectedTypes.has(type)}
-                    onChange={() => toggleType(type)}
-                  />
-                  <span className="tm2-filter-dot" style={{ background: getIncidentTypeColor(type) }} />
-                  {type}
-                </label>
-              </li>
-            ))}
+            {INCIDENT_TYPES.map(type => {
+              const isSelected = selectedTypes.has(type);
+              return (
+                <li key={type} className="tm2-filter-item">
+                  <label className={isSelected ? 'tm2-filter-option--active' : ''}>
+                    <input
+                      type="checkbox"
+                      checked={isSelected}
+                      onChange={() => toggleType(type)}
+                    />
+                    <span className="tm2-filter-dot" style={{ background: getIncidentTypeColor(type) }} />
+                    <span className="tm2-filter-label">{type}</span>
+                    <span className="tm2-filter-check" aria-hidden="true">
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none"
+                           stroke="currentColor" strokeWidth="3" strokeLinecap="round"
+                           strokeLinejoin="round">
+                        <path d="m5 12 4 4L19 6"/>
+                      </svg>
+                    </span>
+                  </label>
+                </li>
+              );
+            })}
           </ul>
         </div>
       </div>
