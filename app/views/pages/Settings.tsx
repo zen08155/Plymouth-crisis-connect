@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useApp } from '../context/AppContext';
 
 interface User {
   id: number;
@@ -22,6 +23,7 @@ const SETTINGS_OPTIONS = [
 
 export default function Settings() {
   const navigate = useNavigate();
+  const { openSidebar } = useApp();
   const [usersExpanded, setUsersExpanded] = useState(false);
 
   return (
@@ -35,6 +37,11 @@ export default function Settings() {
           </svg>
         </button>
         <div className="pf-tab">Settings</div>
+        <button className="ah-hamburger" onClick={openSidebar} aria-label="Open menu">
+          <span />
+          <span />
+          <span />
+        </button>
       </div>
 
       {/* Coordinator profile row */}

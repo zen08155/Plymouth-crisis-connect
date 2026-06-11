@@ -1,10 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-
-interface SidebarProps {
-  open: boolean;
-  onClose: () => void;
-}
+import { useApp } from '../context/AppContext';
 
 const NAV_ITEMS = [
   {
@@ -53,21 +49,22 @@ const NAV_ITEMS = [
   },
 ];
 
-export default function Sidebar({ open, onClose }: SidebarProps) {
+export default function Sidebar() {
   const navigate = useNavigate();
+  const { sidebarOpen, closeSidebar, role, logout } = useApp();
 
   function handleNav(href: string) {
-    onClose();
+    closeSidebar();
     navigate(href);
   }
 
   function handleKeyDown(e: React.KeyboardEvent) {
-    if (e.key === 'Escape') onClose();
+    if (e.key === 'Escape') closeSidebar();
   }
 
   function handleLogout() {
-    localStorage.removeItem('plymouth-user');
-    onClose();
+    closeSidebar();
+    logout();
     navigate('/login', { replace: true });
   }
 
@@ -75,21 +72,21 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
     <>
       {/* Backdrop */}
       <div
-        className={`sb-backdrop ${open ? 'sb-backdrop--visible' : ''}`}
-        onClick={onClose}
+        className={`sb-backdrop ${sidebarOpen ? 'sb-backdrop--visible' : ''}`}
+        onClick={closeSidebar}
         aria-hidden="true"
       />
 
       {/* Panel */}
       <aside
-        className={`sb-panel ${open ? 'sb-panel--open' : ''}`}
+        className={`sb-panel ${sidebarOpen ? 'sb-panel--open' : ''}`}
         role="navigation"
         aria-label="App navigation"
         onKeyDown={handleKeyDown}
       >
         {/* Avatar header */}
         <div className="sb-header">
-          <button className="sb-close-btn" onClick={onClose} aria-label="Close menu">
+          <button className="sb-close-btn" onClick={closeSidebar} aria-label="Close menu">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none"
                  stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
               <line x1="18" y1="6" x2="6" y2="18"/>
@@ -117,21 +114,33 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
               <span className="sb-nav-label">{item.label}</span>
             </button>
           ))}
-        </nav>
 
-        <div className="sb-footer">
-          <button className="sb-nav-item sb-logout" onClick={handleLogout}>
+          {/* Admin-ingang: alleen zichtbaar voor admins (/admin blijft direct bereikbaar voor demo) */}
+          {role === 'admin' && (
+            <button className="sb-nav-item" onClick={() => handleNav('/admin')}>
+              <span className="sb-nav-icon">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none"
+                     stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                  <polyline points="9 12 11 14 15 10"/>
+                </svg>
+              </span>
+              <span className="sb-nav-label">ADMIN</span>
+            </button>
+          )}
+
+          <button className="sb-nav-item sb-nav-item--logout" onClick={handleLogout}>
             <span className="sb-nav-icon">
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none"
                    stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M10 17l5-5-5-5"/>
-                <path d="M15 12H3"/>
-                <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/>
+                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+                <polyline points="16 17 21 12 16 7"/>
+                <line x1="21" y1="12" x2="9" y2="12"/>
               </svg>
             </span>
             <span className="sb-nav-label">LOG OUT</span>
           </button>
-        </div>
+        </nav>
       </aside>
     </>
   );
