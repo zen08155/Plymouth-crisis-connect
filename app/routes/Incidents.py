@@ -12,6 +12,11 @@ from app.security import verify_access_token
 service = CoordinatorRepository()
 user_service = UserAccount()
 router = APIRouter()
+@router.get("/incidents/{incident_id}")
+def get_incidents(incident_id : int):
+    return service.get_incident(incident_id)
+
+
 
 class Incident(BaseModel):
     title: str = Field(min_length=3, max_length=255)
