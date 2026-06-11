@@ -15,6 +15,7 @@ import {
   createLocationMarkerIcon,
   PLYMOUTH_MAP_OPTIONS,
 } from '../map/plymouth';
+import { useToast } from '../context/ToastContext';
 
 interface StoredUser {
   id: number;
@@ -32,10 +33,12 @@ const INITIAL_FORM = {
   longitude: '-4.1427',
   priority: 'normal' as Incident['priority'],
   requiredCertificate: '',
+  availableAt: '',
 };
 
 export default function CreateIncident() {
   const navigate = useNavigate();
+  const toast = useToast();
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstance = useRef<L.Map | null>(null);
   const markerInstance = useRef<L.Marker | null>(null);
@@ -100,10 +103,16 @@ export default function CreateIncident() {
         longitude: Number(form.longitude),
         priority: form.priority,
         required_certificate: form.requiredCertificate || null,
+        available_at: form.availableAt
+          ? new Date(form.availableAt).toISOString()
+          : null,
       });
+      toast.success('Incident created and published.');
       navigate(`/task-description/${incidentId}`, { replace: true });
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : 'Unable to create incident.');
+      const message = caught instanceof Error ? caught.message : 'Unable to create incident.';
+      setError(message);
+      toast.error(message);
     } finally {
       setSubmitting(false);
     }
@@ -111,12 +120,12 @@ export default function CreateIncident() {
 
   return (
     <div className="ci-page">
-      <AppHeader showBack title="CREATE INCIDENT" />
+      <AppHeader title="Create incident" />
       <main className="ci-main">
         <section className="ci-heading">
           <span className="ci-kicker">Coordinator tools</span>
           <h1>Create a new incident</h1>
-          <p>The incident will appear immediately on the volunteer task map.</p>
+          <p>Publish immediately or schedule when the incident becomes available.</p>
         </section>
 
         <form className="ci-form" onSubmit={handleSubmit}>
@@ -185,6 +194,23 @@ export default function CreateIncident() {
           </div>
 
           <div className="ci-field">
+            <label htmlFor="ci-available-at">Available from (optional)</label>
+            <input
+              id="ci-available-at"
+              name="availableAt"
+              type="datetime-local"
+              value={form.availableAt}
+              min={new Date(Date.now() - new Date().getTimezoneOffset() * 60000)
+                .toISOString()
+                .slice(0, 16)}
+              onChange={handleChange}
+            />
+            <span className="ci-field-help">
+              Leave blank to publish immediately. Scheduled incidents are visible but cannot be joined early.
+            </span>
+          </div>
+
+          <div className="ci-field">
             <label htmlFor="ci-important">Important safety information</label>
             <input id="ci-important" name="importantData" value={form.importantData}
               onChange={handleChange} maxLength={255}
@@ -215,7 +241,7 @@ export default function CreateIncident() {
 
           {error && <p className="ci-error" role="alert">{error}</p>}
           <div className="ci-actions">
-            <button type="button" className="ci-secondary" onClick={() => navigate('/tasks')}>
+            <button type="button" className="ci-secondary" onClick={() => navigate('/')}>
               Cancel
             </button>
             <button type="submit" className="ci-submit" disabled={submitting}>

@@ -2,10 +2,12 @@ import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import Logo from '../components/Logo';
+import AppHeader from '../components/AppHeader';
 import {
+  formatIncidentCountdown,
   getIncident,
   getIncidentTypeColor,
+  isIncidentUpcoming,
   volunteerForIncident,
   type Incident,
 } from '../api/incidents';
@@ -19,6 +21,7 @@ import {
   PLYMOUTH_BOUNDS,
   PLYMOUTH_MAP_OPTIONS,
 } from '../map/plymouth';
+import { useToast } from '../context/ToastContext';
 
 function getLocationLabel(incident: Incident) {
   const locationMatch = incident.title.match(/\b(?:at|in|near)\s+(.+)$/i);
@@ -27,6 +30,7 @@ function getLocationLabel(incident: Incident) {
 
 export default function TaskDescription() {
   const navigate = useNavigate();
+  const toast = useToast();
   const { incidentId } = useParams();
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstance = useRef<L.Map | null>(null);
@@ -35,6 +39,7 @@ export default function TaskDescription() {
   const [volunteered, setVolunteered] = useState(false);
   const [volunteerError, setVolunteerError] = useState('');
   const [verifiedCertificates, setVerifiedCertificates] = useState<Set<string>>(new Set());
+  const [now, setNow] = useState(Date.now());
   const currentRole = (() => {
     try {
       return JSON.parse(localStorage.getItem('plymouth-user') ?? 'null')?.role as string | undefined;
@@ -42,6 +47,11 @@ export default function TaskDescription() {
       return undefined;
     }
   })();
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(Date.now()), 1000);
+    return () => window.clearInterval(timer);
+  }, []);
 
   useEffect(() => {
     const id = Number(incidentId || 101);
@@ -99,8 +109,11 @@ export default function TaskDescription() {
     try {
       await volunteerForIncident(incident.id);
       setVolunteered(true);
+      toast.success(`You joined "${incident.title}".`);
     } catch (error) {
-      setVolunteerError(error instanceof Error ? error.message : 'Unable to volunteer.');
+      const message = error instanceof Error ? error.message : 'Unable to volunteer.';
+      setVolunteerError(message);
+      toast.error(message);
     }
   }
 
@@ -114,21 +127,14 @@ export default function TaskDescription() {
     && currentRole === 'volunteer'
     && !verifiedCertificates.has(incident.requiredCertificate),
   );
+  const upcoming = Boolean(incident && isIncidentUpcoming(incident, now));
 
   return (
     <div
       className="incident-detail-page"
       style={{ '--incident-color': incidentColor } as React.CSSProperties}
     >
-      <header className="incident-detail-header">
-        <button type="button" className="incident-back" onClick={() => navigate('/tasks')}>
-          <span aria-hidden="true">←</span>
-          Back to tasks
-        </button>
-        <button type="button" className="incident-logo" onClick={() => navigate('/tasks')}>
-          <Logo height={40} />
-        </button>
-      </header>
+      <AppHeader title="Incident details" />
 
       <main className="incident-detail-main">
         {loading ? (
@@ -136,7 +142,7 @@ export default function TaskDescription() {
         ) : !incident ? (
           <div className="incident-state">
             <h1>Incident not found</h1>
-            <button type="button" onClick={() => navigate('/tasks')}>Return to tasks</button>
+            <button type="button" onClick={() => navigate('/')}>Return home</button>
           </div>
         ) : (
           <>
@@ -152,7 +158,9 @@ export default function TaskDescription() {
                 <div className="incident-badges">
                   <span className="incident-type-badge">{incident.type}</span>
                   <span className="incident-priority-badge">{incident.priority} priority</span>
-                  <span className="incident-status-badge">{incident.status}</span>
+                  <span className="incident-status-badge">
+                    {upcoming ? 'scheduled' : incident.status}
+                  </span>
                 </div>
                 <h1>{incident.title}</h1>
                 <p>Review the incident information before joining the response team.</p>
@@ -189,30 +197,46 @@ export default function TaskDescription() {
                   </div>
                   <div>
                     <span>Current status</span>
-                    <strong>{incident.status}</strong>
+                    <strong>{upcoming ? 'Scheduled' : incident.status}</strong>
                   </div>
                   <div>
                     <span>Required certificate</span>
                     <strong>{incident.requiredCertificate || 'None'}</strong>
                   </div>
+                  <div>
+                    <span>Available from</span>
+                    <strong>{new Date(incident.availableAt).toLocaleString()}</strong>
+                  </div>
                 </div>
               </article>
 
               <aside className="incident-action-card">
-                <span className="incident-section-label">Join the response</span>
-                <h2>{locked ? 'Certificate required' : 'Ready to help?'}</h2>
+                <span className="incident-section-label">
+                  {upcoming ? 'Scheduled response' : 'Join the response'}
+                </span>
+                <h2>
+                  {upcoming
+                    ? `Available in ${formatIncidentCountdown(incident.availableAt, now)}`
+                    : locked
+                      ? 'Certificate required'
+                      : 'Ready to help?'}
+                </h2>
                 <p>
-                  {locked
+                  {upcoming
+                    ? `This task opens on ${new Date(incident.availableAt).toLocaleString()}.`
+                    : locked
                     ? `A verified ${incident.requiredCertificate} certificate is required for this task.`
                     : 'Volunteering adds you to the incident and its main response team.'}
                 </p>
                 <button
                   className={`incident-volunteer ${volunteered ? 'incident-volunteer--active' : ''}`}
                   onClick={handleVolunteer}
-                  disabled={volunteered || locked || currentRole !== 'volunteer'}
+                  disabled={volunteered || upcoming || locked || currentRole !== 'volunteer'}
                 >
                   {volunteered
                     ? 'You are on the team'
+                    : upcoming
+                      ? `Available in ${formatIncidentCountdown(incident.availableAt, now)}`
                     : locked
                       ? `Requires ${incident.requiredCertificate}`
                       : currentRole !== 'volunteer'

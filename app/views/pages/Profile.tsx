@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import AppHeader from '../components/AppHeader';
+import { useToast } from '../context/ToastContext';
 
 interface StoredUser {
   id: number;
@@ -30,6 +31,7 @@ function loadProfile() {
 }
 
 export default function Profile() {
+  const toast = useToast();
   const [form, setForm] = useState(loadProfile);
   const [saved, setSaved] = useState(false);
 
@@ -51,6 +53,7 @@ export default function Profile() {
       phone: form.phone.trim(),
     }));
     setSaved(true);
+    toast.success('Profile changes saved.');
   }
 
   const displayName = [form.name, form.surname].filter(Boolean).join(' ') || 'Your profile';
@@ -62,7 +65,7 @@ export default function Profile() {
 
   return (
     <div className="pf-page">
-      <AppHeader showBack title="PROFILE" />
+      <AppHeader title="Profile" />
 
       <main className="pf-main">
         <section className="pf-intro">

@@ -4,14 +4,14 @@ from decimal import *
 from app.models.incident import Incident
 from app.models.tasks import Task
 from app.database.database_connection import Database
-from datetime import datetime
+from datetime import datetime, timezone
 
 class CoordinatorRepository:
     def list_active_incidents(self) -> list[dict]:
         sql = """
             SELECT incidentId, title, description, type, latitude, longitude,
                    priority, requiredCertificate, status, createdAt, createdBy,
-                   endedAt, endedBy
+                   availableAt, endedAt, endedBy
             FROM incidents
             WHERE endedAt IS NULL AND status = TRUE
             ORDER BY createdAt DESC
@@ -40,7 +40,7 @@ class CoordinatorRepository:
         sql = """
             SELECT incidentId, title, description, type, latitude, longitude,
                    priority, requiredCertificate, status, createdAt, createdBy,
-                   endedAt, endedBy
+                   availableAt, endedAt, endedBy
             FROM incidents
             WHERE incidentId = %s
         """
@@ -74,9 +74,12 @@ class CoordinatorRepository:
         Returns:
             bool: on success/failure
         """
-        sql = "INSERT INTO incidents (title, description, type, importantData, importantDataExtra, latitude, longitude, priority, requiredCertificate, status, createdAt, createdBy) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"
+        sql = "INSERT INTO incidents (title, description, type, importantData, importantDataExtra, latitude, longitude, priority, requiredCertificate, status, createdAt, availableAt, createdBy) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"
         sql_notifs = "INSERT INTO incidentNotification(incidentId, title, sentAt) VALUES (%s, %s, %s)"
-        current_time = datetime.now()
+        current_time = datetime.now(timezone.utc).replace(tzinfo=None)
+        available_at = incident.available_at or current_time
+        if available_at.tzinfo is not None:
+            available_at = available_at.astimezone(timezone.utc).replace(tzinfo=None)
 
         conn = None
         cursor = None
@@ -84,9 +87,9 @@ class CoordinatorRepository:
         try:
             conn = Database.get_connection()
             cursor = conn.cursor()
-            cursor.execute(sql, (incident.title, incident.description, incident.incident_type, incident.important_data, incident.important_data_extra, incident.latitude, incident.longitude, incident.priority, incident.required_certificate, incident.status, current_time, coordinator_id))
+            cursor.execute(sql, (incident.title, incident.description, incident.incident_type, incident.important_data, incident.important_data_extra, incident.latitude, incident.longitude, incident.priority, incident.required_certificate, incident.status, current_time, available_at, coordinator_id))
             incident_id = cursor.lastrowid
-            cursor.execute(sql_notifs, (incident_id, incident.title, current_time))
+            cursor.execute(sql_notifs, (incident_id, incident.title, available_at))
             cursor.execute(
                 "INSERT INTO team (incidentId, coordinatorId, teamLeaderId, name, task, createdAt, isActive) VALUES (%s, %s, %s, %s, %s, %s, %s)",
                 (incident_id, coordinator_id, None, "MAIN - " + incident.title, "", current_time, True),
@@ -128,25 +131,66 @@ class CoordinatorRepository:
                 print("error: " + str(e))
                 return False
 
-    def close_incident(self, coordinator_id : int, incident_id : int) -> bool:
-        """Updates the incident with an endedAt and endedBy
-
-        Args:
-            admin_id (int): user_id of the admin closing the incident
-            incident_id (int): id of the incident being closed
-
-        Returns:
-            bool: on success/failure
-    
-        """
-        sql = "UPDATE incidents SET endedAt = %s, endedBy = %s WHERE incidentId = %s"
+    def close_incident(
+        self,
+        user_id: int,
+        incident_id: int,
+        allow_any_incident: bool = False,
+    ) -> bool:
+        """Closes an active incident and deactivates its related work."""
+        conn = None
+        cursor = None
+        current_time = datetime.now()
 
         try:
-            Database.execute(sql, (datetime.now(), coordinator_id, incident_id))
-            return True
+            conn = Database.get_connection()
+            cursor = conn.cursor()
 
-        except Exception as e:
-            print("error: " + str(e))
+            ownership_clause = "" if allow_any_incident else "AND createdBy = %s"
+            params = (
+                (current_time, user_id, incident_id)
+                if allow_any_incident
+                else (current_time, user_id, incident_id, user_id)
+            )
+            cursor.execute(
+                f"""
+                UPDATE incidents
+                SET endedAt = %s, endedBy = %s, status = FALSE
+                WHERE incidentId = %s
+                  AND endedAt IS NULL
+                  AND status = TRUE
+                  {ownership_clause}
+                """,
+                params,
+            )
+            if cursor.rowcount == 0:
+                conn.rollback()
+                return False
+
+            cursor.execute(
+                """
+                UPDATE tasks
+                JOIN team ON team.teamId = tasks.teamId
+                SET tasks.isActive = FALSE, tasks.updatedAt = %s
+                WHERE team.incidentId = %s
+                """,
+                (current_time, incident_id),
+            )
+            cursor.execute(
+                "UPDATE team SET isActive = FALSE WHERE incidentId = %s",
+                (incident_id,),
+            )
+            conn.commit()
+            return True
+        except Exception:
+            if conn:
+                conn.rollback()
+            raise
+        finally:
+            if cursor:
+                cursor.close()
+            if conn:
+                conn.close()
 
     def add_volunteer_to_team(self, volunteer_id : int, team_id : int) ->bool :
         """read method name

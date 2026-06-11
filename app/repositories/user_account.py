@@ -294,6 +294,49 @@ class UserAccount:
             if conn:
                 conn.close()
 
+    def list_active_incidents_for_volunteer(self, user_id: int) -> list[dict]:
+        conn = None
+        cursor = None
+        try:
+            conn = Database.get_connection()
+            cursor = conn.cursor(dictionary=True)
+            cursor.execute(
+                """
+                SELECT incidents.incidentId, incidents.title,
+                       incidents.description, incidents.type,
+                       incidents.latitude, incidents.longitude,
+                       incidents.priority, incidents.requiredCertificate,
+                       incidents.status, incidents.createdAt,
+                       incidents.availableAt, incidents.createdBy, incidents.endedAt,
+                       incidents.endedBy, incidentVolunteers.joinedAt,
+                       incidentVolunteers.status AS participationStatus
+                FROM incidentVolunteers
+                JOIN incidents
+                  ON incidents.incidentId = incidentVolunteers.incidentId
+                WHERE incidentVolunteers.userId = %s
+                  AND incidentVolunteers.removedAt IS NULL
+                  AND incidentVolunteers.status = 'joined'
+                  AND incidents.endedAt IS NULL
+                  AND incidents.status = TRUE
+                ORDER BY
+                  CASE incidents.priority
+                    WHEN 'critical' THEN 1
+                    WHEN 'high' THEN 2
+                    WHEN 'normal' THEN 3
+                    WHEN 'low' THEN 4
+                    ELSE 5
+                  END,
+                  incidentVolunteers.joinedAt DESC
+                """,
+                (user_id,),
+            )
+            return cursor.fetchall()
+        finally:
+            if cursor:
+                cursor.close()
+            if conn:
+                conn.close()
+
     def set_skills(self, user_id : int, skills: UserSkills) -> bool:
         """Sets skills for User in database, also connects the skills and user in volunteerSkills.
 

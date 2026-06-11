@@ -1,11 +1,12 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
+import { useToast } from '../context/ToastContext';
 
 const NAV_ITEMS = [
   {
-    label: 'TASKS',
-    href: '/tasks',
+    label: 'HOME',
+    href: '/',
     icon: (
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none"
            stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -53,6 +54,7 @@ const NAV_ITEMS = [
 export default function Sidebar() {
   const navigate = useNavigate();
   const { sidebarOpen, closeSidebar, role, logout } = useApp();
+  const toast = useToast();
 
   function handleNav(href: string) {
     closeSidebar();
@@ -66,6 +68,7 @@ export default function Sidebar() {
   function handleLogout() {
     closeSidebar();
     logout();
+    toast.info('You have been logged out.');
     navigate('/login', { replace: true });
   }
 
@@ -117,15 +120,27 @@ export default function Sidebar() {
           ))}
 
           {role === 'volunteer' && (
-            <button className="sb-nav-item" onClick={() => handleNav('/skills')}>
-              <span className="sb-nav-icon">
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none"
-                     stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
-                </svg>
-              </span>
-              <span className="sb-nav-label">CERTIFICATES</span>
-            </button>
+            <>
+              <button className="sb-nav-item" onClick={() => handleNav('/my-tasks')}>
+                <span className="sb-nav-icon">
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none"
+                       stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M8 6h13M8 12h13M8 18h13"/>
+                    <path d="M3 6h.01M3 12h.01M3 18h.01"/>
+                  </svg>
+                </span>
+                <span className="sb-nav-label">MY ACTIVE TASKS</span>
+              </button>
+              <button className="sb-nav-item" onClick={() => handleNav('/skills')}>
+                <span className="sb-nav-icon">
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none"
+                       stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+                  </svg>
+                </span>
+                <span className="sb-nav-label">CERTIFICATES & SKILLS</span>
+              </button>
+            </>
           )}
 
           {(role === 'coordinator' || role === 'system_manager') && (
@@ -137,7 +152,7 @@ export default function Sidebar() {
                   <polyline points="9 12 11 14 15 10"/>
                 </svg>
               </span>
-              <span className="sb-nav-label">CERTIFICATE REVIEWS</span>
+              <span className="sb-nav-label">RESPONSE MANAGEMENT</span>
             </button>
           )}
 

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import Logo from '../components/Logo';
 import { useApp, type Role } from '../context/AppContext';
+import { useToast } from '../context/ToastContext';
 
 interface LoginResponse {
   token: string;
@@ -17,6 +18,7 @@ interface LoginResponse {
 export default function Login() {
   const navigate = useNavigate();
   const { login } = useApp();
+  const toast = useToast();
   const location = useLocation();
   const registrationMessage = (
     location.state as { registrationMessage?: string } | null
@@ -30,7 +32,8 @@ export default function Login() {
   // Social-login knoppen (geen backend): zet alleen de front-end context
   function handleLogin() {
     login();
-    navigate('/tasks');
+    toast.success('You are now logged in.');
+    navigate('/');
   }
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -58,9 +61,12 @@ export default function Login() {
       // Sync front-end context (rol/verificatie/statusbalk)
       const role = user.role as Role;
       login(role);
-      navigate(role === 'coordinator' ? '/coordinator/incidents/new' : '/tasks', { replace: true });
+      toast.success(`Welcome back, ${user.firstName}.`);
+      navigate('/', { replace: true });
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : 'Unable to log in.');
+      const message = caught instanceof Error ? caught.message : 'Unable to log in.';
+      setError(message);
+      toast.error(message);
     } finally {
       setSubmitting(false);
     }

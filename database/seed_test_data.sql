@@ -30,54 +30,67 @@ SET @seed_user_id = (
 
 INSERT INTO incidents (
   title, description, type, importantData, importantDataExtra, latitude,
-  longitude, priority, status, createdAt, createdBy
+  longitude, priority, status, createdAt, availableAt, createdBy
 )
 SELECT
   'Flood response at Plymouth Barbican',
   'Help residents move supplies away from floodwater and report blocked access routes.',
   'Flood', 'Wear waterproof clothing', 'Meet beside the Mayflower Steps',
-  50.3679000, -4.1343000, 'critical', TRUE, NOW(), @seed_user_id
+  50.3679000, -4.1343000, 'critical', TRUE, NOW(), NOW(), @seed_user_id
 WHERE NOT EXISTS (
   SELECT 1 FROM incidents WHERE title = 'Flood response at Plymouth Barbican'
 );
 
 INSERT INTO incidents (
   title, description, type, importantData, importantDataExtra, latitude,
-  longitude, priority, status, createdAt, createdBy
+  longitude, priority, status, createdAt, availableAt, createdBy
 )
 SELECT
   'Food parcel support in Devonport',
   'Sort emergency food parcels and assist with distribution to local families.',
   'Relief', 'Manual handling may be required', 'Report to the community aid desk',
-  50.3781000, -4.1714000, 'high', TRUE, NOW(), @seed_user_id
+  50.3781000, -4.1714000, 'high', TRUE, NOW(), NOW(), @seed_user_id
 WHERE NOT EXISTS (
   SELECT 1 FROM incidents WHERE title = 'Food parcel support in Devonport'
 );
 
 INSERT INTO incidents (
   title, description, type, importantData, importantDataExtra, latitude,
-  longitude, priority, status, createdAt, createdBy
+  longitude, priority, status, createdAt, availableAt, createdBy
 )
 SELECT
   'Storm damage checks near Mutley Plain',
   'Photograph reported storm damage and send safe access updates to the coordinator.',
   'Storm', 'Do not enter damaged buildings', 'Work in pairs',
-  50.3842000, -4.1359000, 'normal', TRUE, NOW(), @seed_user_id
+  50.3842000, -4.1359000, 'normal', TRUE, NOW(), NOW(), @seed_user_id
 WHERE NOT EXISTS (
   SELECT 1 FROM incidents WHERE title = 'Storm damage checks near Mutley Plain'
 );
 
 INSERT INTO incidents (
   title, description, type, importantData, importantDataExtra, latitude,
-  longitude, priority, status, createdAt, createdBy
+  longitude, priority, status, createdAt, availableAt, createdBy
 )
 SELECT
   'Temporary shelter support in the city centre',
   'Welcome residents, organise donated supplies and direct people to available services.',
   'Shelter', 'Safeguarding briefing provided on arrival', 'Evening shift',
-  50.3715000, -4.1427000, 'low', TRUE, NOW(), @seed_user_id
+  50.3715000, -4.1427000, 'low', TRUE, NOW(), NOW(), @seed_user_id
 WHERE NOT EXISTS (
   SELECT 1 FROM incidents WHERE title = 'Temporary shelter support in the city centre'
+);
+
+INSERT INTO incidents (
+  title, description, type, importantData, importantDataExtra, latitude,
+  longitude, priority, status, createdAt, availableAt, createdBy
+)
+SELECT
+  'Scheduled welfare checks in Stonehouse',
+  'Visit registered residents, confirm their welfare and report requests for additional support.',
+  'Medical', 'Work in pairs and carry identification', 'Meet at the community centre reception',
+  50.3728000, -4.1621000, 'normal', TRUE, NOW(), DATE_ADD(NOW(), INTERVAL 2 HOUR), @seed_user_id
+WHERE NOT EXISTS (
+  SELECT 1 FROM incidents WHERE title = 'Scheduled welfare checks in Stonehouse'
 );
 
 UPDATE incidents
@@ -97,7 +110,8 @@ WHERE incident.title IN (
   'Flood response at Plymouth Barbican',
   'Food parcel support in Devonport',
   'Storm damage checks near Mutley Plain',
-  'Temporary shelter support in the city centre'
+  'Temporary shelter support in the city centre',
+  'Scheduled welfare checks in Stonehouse'
 )
 AND NOT EXISTS (
   SELECT 1
@@ -152,4 +166,18 @@ JOIN incidents ON incidents.incidentId = team.incidentId
 WHERE incidents.title = 'Temporary shelter support in the city centre'
 AND NOT EXISTS (
   SELECT 1 FROM tasks WHERE tasks.teamId = team.teamId AND tasks.name = 'Organise shelter supplies'
+);
+
+INSERT INTO tasks (teamId, name, description, priority, createdAt, updatedAt, isActive)
+SELECT
+  team.teamId, 'Complete scheduled welfare checks',
+  'Follow the assigned route and record each resident welfare outcome.',
+  'normal', NOW(), NULL, TRUE
+FROM team
+JOIN incidents ON incidents.incidentId = team.incidentId
+WHERE incidents.title = 'Scheduled welfare checks in Stonehouse'
+AND NOT EXISTS (
+  SELECT 1 FROM tasks
+  WHERE tasks.teamId = team.teamId
+    AND tasks.name = 'Complete scheduled welfare checks'
 );

@@ -4,7 +4,7 @@ import Button from './Button';
 import Logo from './Logo';
 
 const links = [
-  { label: 'Tasks',   href: '/tasks' },
+  { label: 'Home',    href: '/' },
   { label: 'About',   href: '#about' },
   { label: 'Contact', href: '#contact' },
 ];

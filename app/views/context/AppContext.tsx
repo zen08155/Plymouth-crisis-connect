@@ -5,7 +5,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
   ------------------------------------------------------------------
   Dit is een TIJDELIJKE front-end mock van de auth/verificatie-state.
   Alles wordt nu in localStorage bewaard zodat de demo werkt zonder server.
-  Vervang later 'login', 'register', 'submitVerification' en 'setVerification'
+  Vervang later 'login', 'register' en 'setVerification'
   door echte API-calls (bijv. Firebase). De rest van de UI gebruikt alleen
   deze functies, dus je hoeft de componenten niet aan te passen.
   ------------------------------------------------------------------
@@ -27,7 +27,6 @@ interface AppContextValue extends AuthState {
   register: (name?: string) => void;
   logout: () => void;
   // Verificatie
-  submitVerification: () => void;
   setVerification: (status: VerificationStatus) => void;
   // Sidebar UI
   sidebarOpen: boolean;
@@ -76,7 +75,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         role,
       })),
 
-    // Nieuwe gebruiker registreert -> moet nog de welcome/onboarding doen
+    // Nieuwe gebruiker registreert en gaat daarna naar Certificates & Skills
     register: (name = '') =>
       setState({
         isAuthenticated: true,
@@ -90,10 +89,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       localStorage.removeItem('plymouth-user');
       setState(DEFAULT_STATE);
     },
-
-    // Welcome-pagina ingevuld met certificaten -> status 'onder review'
-    submitVerification: () =>
-      setState(prev => ({ ...prev, verification: 'under_review' })),
 
     // Admin keurt goed/af in het verificatie-dashboard
     setVerification: (status: VerificationStatus) =>

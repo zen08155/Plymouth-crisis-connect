@@ -21,6 +21,13 @@ export interface Incident {
   priority: 'low' | 'normal' | 'high' | 'critical';
   status: 'open' | 'closed';
   requiredCertificate: string | null;
+  availableAt: string;
+  createdBy: number;
+}
+
+export interface ActiveVolunteerIncident extends Incident {
+  joinedAt: string;
+  participationStatus: 'joined';
 }
 
 export interface CreateIncidentInput {
@@ -33,6 +40,7 @@ export interface CreateIncidentInput {
   longitude: number;
   priority: Incident['priority'];
   required_certificate: string | null;
+  available_at: string | null;
 }
 
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/$/, '');
@@ -73,6 +81,7 @@ function normalizePriority(priority: string): Incident['priority'] {
 
 function normalizeIncident(raw: Record<string, unknown>): Incident {
   const endedAt = raw.Ended_at ?? raw.endedAt;
+  const availableAt = raw.availableAt ?? raw.Available_at ?? raw.createdAt ?? raw.Created_at;
 
   return {
     id: Number(raw.Incident_id ?? raw.incidentId ?? raw.id),
@@ -86,7 +95,31 @@ function normalizeIncident(raw: Record<string, unknown>): Incident {
     requiredCertificate: raw.requiredCertificate
       ? String(raw.requiredCertificate)
       : null,
+    availableAt: String(availableAt),
+    createdBy: Number(raw.createdBy ?? raw.Created_by ?? 0),
   };
+}
+
+export function isIncidentUpcoming(incident: Incident, now = Date.now()): boolean {
+  return new Date(incident.availableAt).getTime() > now;
+}
+
+export function formatIncidentCountdown(availableAt: string, now = Date.now()): string {
+  const remainingSeconds = Math.max(
+    0,
+    Math.ceil((new Date(availableAt).getTime() - now) / 1000),
+  );
+  if (remainingSeconds === 0) return 'Available now';
+
+  const days = Math.floor(remainingSeconds / 86400);
+  const hours = Math.floor((remainingSeconds % 86400) / 3600);
+  const minutes = Math.floor((remainingSeconds % 3600) / 60);
+  const seconds = remainingSeconds % 60;
+
+  if (days > 0) return `${days}d ${hours}h ${minutes}m`;
+  if (hours > 0) return `${hours}h ${minutes}m ${seconds}s`;
+  if (minutes > 0) return `${minutes}m ${seconds}s`;
+  return `${seconds}s`;
 }
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
@@ -136,6 +169,26 @@ export async function getIncident(id: number): Promise<Incident | null> {
   }
 }
 
+export async function getMyActiveIncidents(): Promise<ActiveVolunteerIncident[]> {
+  const user = JSON.parse(localStorage.getItem('plymouth-user') ?? 'null') as {
+    token?: string;
+  } | null;
+  if (!user?.token) throw new Error('Your session is missing. Please log in again.');
+
+  const data = await request<Record<string, unknown>[]>('/incidents/mine/active', {
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${user.token}`,
+    },
+  });
+
+  return data.map(item => ({
+    ...normalizeIncident(item),
+    joinedAt: String(item.joinedAt),
+    participationStatus: 'joined' as const,
+  }));
+}
+
 export async function volunteerForIncident(incidentId: number): Promise<void> {
   const user = JSON.parse(localStorage.getItem('plymouth-user') ?? 'null') as {
     token?: string;
@@ -143,6 +196,21 @@ export async function volunteerForIncident(incidentId: number): Promise<void> {
   if (!user?.token) throw new Error('Your session is missing. Please log in again.');
 
   await request(`/incidents/${incidentId}/join`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${user.token}`,
+    },
+  });
+}
+
+export async function closeIncident(incidentId: number): Promise<void> {
+  const user = JSON.parse(localStorage.getItem('plymouth-user') ?? 'null') as {
+    token?: string;
+  } | null;
+  if (!user?.token) throw new Error('Your session is missing. Please log in again.');
+
+  await request(`/incidents/${incidentId}/close`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',

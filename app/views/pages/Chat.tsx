@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useApp } from '../context/AppContext';
+import AppHeader from '../components/AppHeader';
 
 interface Message {
   id: number;
@@ -12,8 +11,6 @@ interface Message {
 const INITIAL_MESSAGES: Message[] = [];
 
 export default function Chat() {
-  const navigate = useNavigate();
-  const { openSidebar } = useApp();
   const [messages, setMessages] = useState<Message[]>(INITIAL_MESSAGES);
   const [draft, setDraft] = useState('');
 
@@ -30,21 +27,7 @@ export default function Chat() {
 
   return (
     <div className="chat-page">
-      {/* Header */}
-      <div className="pf-header">
-        <button className="pf-back-btn" onClick={() => navigate(-1)} aria-label="Go back">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
-               stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-            <polyline points="15 18 9 12 15 6"/>
-          </svg>
-        </button>
-        <div className="pf-tab">CHAT</div>
-        <button className="ah-hamburger" onClick={openSidebar} aria-label="Open menu">
-          <span />
-          <span />
-          <span />
-        </button>
-      </div>
+      <AppHeader title="Chat" />
 
       {/* Messages */}
       <div className="chat-messages">

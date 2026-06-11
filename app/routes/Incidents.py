@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from fastapi import APIRouter, Header, HTTPException
 from pydantic import BaseModel, Field
 from typing import Literal
@@ -40,6 +40,7 @@ class Incident(BaseModel):
     ] | None = None
     status: bool = True
     created_at : datetime | None = None
+    available_at: datetime | None = None
     created_by : int | None = None
     ended_at : datetime | None = None
     ended_by : int | None = None
@@ -52,7 +53,11 @@ class update_des(BaseModel):
     description: str | None = None
 
 def serialize_incident(incident: dict):
-    return {
+    available_at = incident["availableAt"]
+    if available_at is not None and available_at.tzinfo is None:
+        available_at = available_at.replace(tzinfo=timezone.utc)
+
+    result = {
         "id": incident["incidentId"],
         "incidentId": incident["incidentId"],
         "title": incident["title"],
@@ -64,8 +69,13 @@ def serialize_incident(incident: dict):
         "requiredCertificate": incident["requiredCertificate"],
         "status": "closed" if incident["endedAt"] else "open",
         "createdAt": incident["createdAt"],
+        "availableAt": available_at,
         "createdBy": incident["createdBy"],
     }
+    if "joinedAt" in incident:
+        result["joinedAt"] = incident["joinedAt"]
+        result["participationStatus"] = incident["participationStatus"]
+    return result
 
 
 @router.get("/incidents")
@@ -77,6 +87,26 @@ def get_incidents():
         ]
     except Exception as error:
         raise HTTPException(500, "Failed to load incidents") from error
+
+
+@router.get("/incidents/mine/active")
+def get_my_active_incidents(authorization: str | None = Header(default=None)):
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(401, "Authentication is required")
+
+    user_id = verify_access_token(authorization.removeprefix("Bearer ").strip())
+    if user_id is None:
+        raise HTTPException(401, "Your session is invalid or has expired")
+    if user_service.get_user_role(user_id) != "volunteer":
+        raise HTTPException(403, "Only volunteers have joined task lists")
+
+    try:
+        return [
+            serialize_incident(incident)
+            for incident in user_service.list_active_incidents_for_volunteer(user_id)
+        ]
+    except Exception as error:
+        raise HTTPException(500, "Failed to load your active tasks") from error
 
 
 @router.get("/incidents/{incident_id}")
@@ -157,6 +187,11 @@ def join_incident(
     incident = service.get_incident(incident_id)
     if incident is None:
         raise HTTPException(404, "Incident not found")
+    if incident["endedAt"] is not None or not incident["status"]:
+        raise HTTPException(409, "This incident has ended")
+    available_at = incident["availableAt"]
+    if available_at is not None and available_at > datetime.now(timezone.utc).replace(tzinfo=None):
+        raise HTTPException(409, "This incident is not available yet")
 
     required_certificate = incident["requiredCertificate"]
     if (
@@ -172,3 +207,45 @@ def join_incident(
         raise HTTPException(409, "Unable to volunteer for this incident")
 
     return {"success": True, "message": "Volunteered successfully"}
+
+
+@router.post("/incidents/{incident_id}/close")
+def close_incident(
+    incident_id: int,
+    authorization: str | None = Header(default=None),
+):
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(401, "Authentication is required")
+
+    user_id = verify_access_token(authorization.removeprefix("Bearer ").strip())
+    if user_id is None:
+        raise HTTPException(401, "Your session is invalid or has expired")
+
+    role = user_service.get_user_role(user_id)
+    if role not in {"coordinator", "system_manager"}:
+        raise HTTPException(
+            403,
+            "Only coordinators and system managers can end incidents",
+        )
+
+    incident = service.get_incident(incident_id)
+    if incident is None:
+        raise HTTPException(404, "Incident not found")
+    if incident["endedAt"] is not None or not incident["status"]:
+        raise HTTPException(409, "Incident has already ended")
+    if role == "coordinator" and incident["createdBy"] != user_id:
+        raise HTTPException(403, "Coordinators can only end incidents they created")
+
+    try:
+        closed = service.close_incident(
+            user_id,
+            incident_id,
+            allow_any_incident=role == "system_manager",
+        )
+    except Exception as error:
+        raise HTTPException(500, "Failed to end incident") from error
+
+    if not closed:
+        raise HTTPException(409, "Incident could not be ended")
+
+    return {"success": True, "message": "Incident ended"}

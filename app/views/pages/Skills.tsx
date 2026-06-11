@@ -7,9 +7,52 @@ import {
   type Certificate,
   type CertificateType,
 } from '../api/certificates';
+import { useToast } from '../context/ToastContext';
+
+const SKILL_OPTIONS = [
+  'Crisis Communication',
+  'Teamwork',
+  'Problem Solving',
+  'Organisation',
+  'Logistics Coordination',
+  'Community Outreach',
+  'Language Support',
+  'Food Preparation',
+  'Administrative Support',
+  'Basic IT Support',
+  'Local Area Knowledge',
+] as const;
+
+function skillsStorageKey() {
+  try {
+    const user = JSON.parse(localStorage.getItem('plymouth-user') ?? 'null') as {
+      id?: number;
+    } | null;
+    return `plymouth-volunteer-skills:${user?.id ?? 'unknown'}`;
+  } catch {
+    return 'plymouth-volunteer-skills:unknown';
+  }
+}
+
+function loadSelectedSkills(): string[] {
+  try {
+    const stored = JSON.parse(localStorage.getItem(skillsStorageKey()) ?? '[]');
+    return Array.isArray(stored)
+      ? stored.filter(
+          (skill): skill is typeof SKILL_OPTIONS[number] =>
+            typeof skill === 'string' && SKILL_OPTIONS.some(option => option === skill),
+        )
+      : [];
+  } catch {
+    return [];
+  }
+}
 
 export default function Skills() {
+  const toast = useToast();
   const fileRef = useRef<HTMLInputElement>(null);
+  const [selectedSkills, setSelectedSkills] = useState<string[]>(loadSelectedSkills);
+  const [skillsSaved, setSkillsSaved] = useState(false);
   const [certificateType, setCertificateType] = useState<CertificateType>('First Aid');
   const [description, setDescription] = useState('');
   const [fileName, setFileName] = useState('');
@@ -29,10 +72,27 @@ export default function Skills() {
     loadCertificates();
   }, []);
 
+  function toggleSkill(skill: string) {
+    setSkillsSaved(false);
+    setSelectedSkills(current =>
+      current.includes(skill)
+        ? current.filter(selected => selected !== skill)
+        : [...current, skill],
+    );
+  }
+
+  function saveSkills() {
+    localStorage.setItem(skillsStorageKey(), JSON.stringify(selectedSkills));
+    setSkillsSaved(true);
+    toast.success('Skills saved.');
+  }
+
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!fileName) {
-      setError('Attach a certificate file before submitting.');
+      const message = 'Attach a certificate file before submitting.';
+      setError(message);
+      toast.error(message);
       return;
     }
 
@@ -48,8 +108,11 @@ export default function Skills() {
       setFileName('');
       if (fileRef.current) fileRef.current.value = '';
       await loadCertificates();
+      toast.success('Certificate submitted for review.');
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : 'Certificate submission failed.');
+      const message = caught instanceof Error ? caught.message : 'Certificate submission failed.';
+      setError(message);
+      toast.error(message);
     } finally {
       setSubmitting(false);
     }
@@ -57,13 +120,48 @@ export default function Skills() {
 
   return (
     <div className="pf-page">
-      <AppHeader showBack title="CERTIFICATES" />
+      <AppHeader title="Certificates & Skills" />
       <main className="cert-main">
         <section className="pf-intro">
           <div>
             <span className="pf-eyebrow">Volunteer qualifications</span>
-            <h1>Certificates</h1>
-            <p>Submit certificates for review to unlock qualified response tasks.</p>
+            <h1>Certificates & Skills</h1>
+            <p>Select your skills and submit certificates for qualifications that require review.</p>
+          </div>
+        </section>
+
+        <section className="cert-skills-card">
+          <div className="pf-form-heading">
+            <div>
+              <span className="pf-section-kicker">Your capabilities</span>
+              <h2>Select your skills</h2>
+              <p>Choose practical abilities you can offer without a formal qualification.</p>
+            </div>
+          </div>
+
+          <div className="cert-skill-grid">
+            {SKILL_OPTIONS.map(skill => {
+              const selected = selectedSkills.includes(skill);
+              return (
+                <button
+                  key={skill}
+                  type="button"
+                  className={`cert-skill-option${selected ? ' cert-skill-option--selected' : ''}`}
+                  aria-pressed={selected}
+                  onClick={() => toggleSkill(skill)}
+                >
+                  <span className="cert-skill-check" aria-hidden="true">{selected ? '✓' : ''}</span>
+                  {skill}
+                </button>
+              );
+            })}
+          </div>
+
+          <div className="cert-skills-actions">
+            {skillsSaved && <p className="cert-skills-saved" role="status">Skills saved.</p>}
+            <button className="pf-save-btn" type="button" onClick={saveSkills}>
+              Save skills
+            </button>
           </div>
         </section>
 

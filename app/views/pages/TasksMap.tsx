@@ -2,13 +2,14 @@ import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import Logo from '../components/Logo';
+import AppHeader from '../components/AppHeader';
 import StatusBanner from '../components/StatusBanner';
-import { useApp } from '../context/AppContext';
 import {
+  formatIncidentCountdown,
   getIncidents,
   getIncidentTypeColor,
   INCIDENT_TYPES,
+  isIncidentUpcoming,
   type Incident,
 } from '../api/incidents';
 import {
@@ -20,9 +21,17 @@ import {
   PLYMOUTH_MAP_OPTIONS,
 } from '../map/plymouth';
 
-function createPinIcon(color: string): L.DivIcon {
+function createPinIcon(color: string, scheduled: boolean): L.DivIcon {
+  const centerIcon = scheduled
+    ? `<circle cx="17" cy="17" r="7" fill="#07111d" opacity=".92"/>
+       <circle cx="17" cy="17" r="4.25" fill="none" stroke="#FCD34D" stroke-width="1.5"/>
+       <path d="M17 14.5v2.8l2 1.2" fill="none" stroke="#FCD34D" stroke-width="1.5"
+             stroke-linecap="round" stroke-linejoin="round"/>`
+    : `<circle cx="17" cy="17" r="6" fill="#07111d" opacity=".88"/>
+       <circle cx="17" cy="17" r="2.5" fill="#E6FFFA"/>`;
+
   return L.divIcon({
-    className: 'tm2-incident-marker',
+    className: `tm2-incident-marker${scheduled ? ' tm2-incident-marker--scheduled' : ''}`,
     html: `<span class="tm2-marker-pulse" style="--marker-color:${color}"></span>
            <svg width="34" height="44" viewBox="0 0 34 44" xmlns="http://www.w3.org/2000/svg">
              <defs>
@@ -31,9 +40,10 @@ function createPinIcon(color: string): L.DivIcon {
                </filter>
              </defs>
              <path d="M17 1C8.16 1 1 8.16 1 17c0 10.7 16 26 16 26s16-15.3 16-26C33 8.16 25.84 1 17 1z"
-                   fill="${color}" stroke="#E6FFFA" stroke-width="2" filter="url(#marker-shadow)"/>
-             <circle cx="17" cy="17" r="6" fill="#07111d" opacity=".88"/>
-             <circle cx="17" cy="17" r="2.5" fill="#E6FFFA"/>
+                   fill="${color}" stroke="${scheduled ? '#FCD34D' : '#E6FFFA'}"
+                   stroke-width="2" ${scheduled ? 'stroke-dasharray="3 2"' : ''}
+                   filter="url(#marker-shadow)"/>
+             ${centerIcon}
            </svg>`,
     iconSize: [34, 44],
     iconAnchor: [17, 44],
@@ -43,7 +53,6 @@ function createPinIcon(color: string): L.DivIcon {
 
 export default function TasksMap() {
   const navigate = useNavigate();
-  const { openSidebar } = useApp();
   const isCoordinator = (() => {
     try {
       return JSON.parse(localStorage.getItem('plymouth-user') ?? 'null')?.role === 'coordinator';
@@ -67,6 +76,7 @@ export default function TasksMap() {
   const [selectedTypes, setSelectedTypes] = useState<Set<string>>(new Set());
   const [selectedIncident, setSelectedIncident] = useState<Incident | null>(null);
   const [verifiedCertificates, setVerifiedCertificates] = useState<Set<string>>(new Set());
+  const [now, setNow] = useState(Date.now());
 
   const visibleIncidents = selectedTypes.size === 0
     ? incidents
@@ -76,6 +86,7 @@ export default function TasksMap() {
     && Boolean(incident.requiredCertificate)
     && !verifiedCertificates.has(incident.requiredCertificate as string)
   );
+  const isUpcoming = (incident: Incident) => isIncidentUpcoming(incident, now);
 
   function toggleType(type: string): void {
     setSelectedIncident(null);
@@ -85,6 +96,11 @@ export default function TasksMap() {
       return next;
     });
   }
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(Date.now()), 1000);
+    return () => window.clearInterval(timer);
+  }, []);
 
   useEffect(() => {
     getIncidents()
@@ -132,9 +148,14 @@ export default function TasksMap() {
 
     visibleIncidents.forEach(incident => {
       const color = getIncidentTypeColor(incident.type);
+      const upcoming = isUpcoming(incident);
       const marker = L.marker(
         [incident.latitude, incident.longitude],
-        { icon: createPinIcon(isLocked(incident) ? '#64748b' : color) },
+        {
+          icon: createPinIcon(isLocked(incident) ? '#64748b' : color, upcoming),
+          title: upcoming ? `Scheduled: ${incident.title}` : incident.title,
+          alt: upcoming ? `Scheduled incident: ${incident.title}` : incident.title,
+        },
       );
       marker.on('click', () => setSelectedIncident(incident));
       marker.addTo(map);
@@ -152,14 +173,7 @@ export default function TasksMap() {
 
   return (
     <div className="tm2-page">
-      <nav className="tm2-nav">
-        <a href="/tasks" className="tm2-logo-link"><Logo height={40} /></a>
-        <button className="ah-hamburger" onClick={openSidebar} aria-label="Open menu">
-          <span />
-          <span />
-          <span />
-        </button>
-      </nav>
+      <AppHeader />
 
       {/* Verificatie-statusbalk (verdwijnt zodra geverifieerd) */}
       <StatusBanner />
@@ -167,10 +181,14 @@ export default function TasksMap() {
       <div className="tm2-map-wrap">
         <div ref={mapRef} className="tm2-map" />
         <div className="tm2-map-status">
-          <span className="tm2-map-status-dot" />
+          <span className="tm2-map-status-icon" aria-hidden="true">
+            <span className="tm2-map-status-ring tm2-map-status-ring--outer" />
+            <span className="tm2-map-status-ring tm2-map-status-ring--inner" />
+            <span className="tm2-map-status-dot" />
+          </span>
           <div>
             <strong>Plymouth response map</strong>
-            <span>{visibleIncidents.length} active incident{visibleIncidents.length === 1 ? '' : 's'}</span>
+            <span>{visibleIncidents.length} open incident{visibleIncidents.length === 1 ? '' : 's'}</span>
           </div>
         </div>
         {selectedIncident && (
@@ -192,6 +210,20 @@ export default function TasksMap() {
             </div>
             <h2>{selectedIncident.title}</h2>
             <p>{selectedIncident.description}</p>
+            {isUpcoming(selectedIncident) && (
+              <button
+                type="button"
+                className="tm2-preview-schedule"
+                title={`Available ${new Date(selectedIncident.availableAt).toLocaleString()}`}
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
+                     stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                  <circle cx="12" cy="12" r="9"/>
+                  <path d="M12 7v5l3 2"/>
+                </svg>
+                Available in {formatIncidentCountdown(selectedIncident.availableAt, now)}
+              </button>
+            )}
             {isLocked(selectedIncident) && (
               <p className="tm2-preview-lock">
                 Requires verified {selectedIncident.requiredCertificate}
@@ -238,6 +270,24 @@ export default function TasksMap() {
               >
                 <span className="tm2-dot" style={{ background: getIncidentTypeColor(incident.type) }} />
                 <span className="tm2-task-title">{incident.title}</span>
+                {isUpcoming(incident) && (
+                  <button
+                    type="button"
+                    className="tm2-schedule"
+                    aria-label={`${incident.title} available in ${formatIncidentCountdown(incident.availableAt, now)}`}
+                    title={`Available ${new Date(incident.availableAt).toLocaleString()}`}
+                    onClick={event => {
+                      event.stopPropagation();
+                      setSelectedIncident(incident);
+                    }}
+                  >
+                    <svg width="17" height="17" viewBox="0 0 24 24" fill="none"
+                         stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                      <circle cx="12" cy="12" r="9"/>
+                      <path d="M12 7v5l3 2"/>
+                    </svg>
+                  </button>
+                )}
                 {isLocked(incident) && (
                   <span className="tm2-lock" title={`Requires ${incident.requiredCertificate}`}>
                     <svg width="17" height="17" viewBox="0 0 24 24" fill="none"

@@ -2,6 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { getCountries, getCountryCallingCode, type CountryCode } from 'libphonenumber-js/min';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
+import { useToast } from '../context/ToastContext';
 
 interface RegistrationForm {
   firstName: string;
@@ -37,6 +38,7 @@ function countryFlag(countryCode: CountryCode) {
 export default function Register() {
   const navigate = useNavigate();
   const { register } = useApp();
+  const toast = useToast();
   const [form, setForm] = useState<RegistrationForm>({
     firstName: '',
     surname: '',
@@ -73,7 +75,9 @@ export default function Register() {
     setError('');
 
     if (form.password !== form.confirmPassword) {
-      setError('Passwords do not match.');
+      const message = 'Passwords do not match.';
+      setError(message);
+      toast.error(message);
       return;
     }
 
@@ -106,11 +110,13 @@ export default function Register() {
       }
 
       localStorage.setItem('plymouth-user', JSON.stringify({ ...user, token }));
-      // Nieuwe gebruiker -> front-end context zetten en naar de welcome/onboarding
       register(`${form.firstName} ${form.surname}`.trim());
-      navigate('/welcome', { replace: true });
+      toast.success('Account created successfully.');
+      navigate('/skills', { replace: true });
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : 'Registration failed.');
+      const message = caught instanceof Error ? caught.message : 'Registration failed.';
+      setError(message);
+      toast.error(message);
     } finally {
       setSubmitting(false);
     }
