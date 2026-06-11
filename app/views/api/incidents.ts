@@ -1,3 +1,16 @@
+export const INCIDENT_TYPES = [
+  'Flood',
+  'Fire',
+  'Medical',
+  'Storm',
+  'Shelter',
+  'Relief',
+  'Infrastructure',
+  'Search and Rescue',
+] as const;
+
+export type IncidentType = typeof INCIDENT_TYPES[number];
+
 export interface Incident {
   id: number;
   title: string;
@@ -7,15 +20,32 @@ export interface Incident {
   longitude: number;
   priority: 'low' | 'normal' | 'high' | 'critical';
   status: 'open' | 'closed';
+  requiredCertificate: string | null;
+}
+
+export interface CreateIncidentInput {
+  title: string;
+  description: string;
+  incident_type: IncidentType;
+  important_data: string;
+  important_data_extra: string;
+  latitude: number;
+  longitude: number;
+  priority: Incident['priority'];
+  required_certificate: string | null;
 }
 
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/$/, '');
 
 const TYPE_COLORS: Record<string, string> = {
   flood: '#ef4444',
+  fire: '#f97316',
+  medical: '#ec4899',
   relief: '#f59e0b',
   shelter: '#22c55e',
   storm: '#3b82f6',
+  infrastructure: '#a855f7',
+  'search and rescue': '#2EC4B6',
 };
 
 export function getIncidentTypeColor(type: string): string {
@@ -53,6 +83,9 @@ function normalizeIncident(raw: Record<string, unknown>): Incident {
     longitude: Number(raw.Longitude ?? raw.longitude),
     priority: normalizePriority(String(raw.Priority ?? raw.priority ?? 'normal')),
     status: endedAt ? 'closed' : String(raw.status ?? 'open').toLowerCase() === 'closed' ? 'closed' : 'open',
+    requiredCertificate: raw.requiredCertificate
+      ? String(raw.requiredCertificate)
+      : null,
   };
 }
 
@@ -63,16 +96,36 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
   });
 
   if (!response.ok) {
-    throw new Error(`Request failed with status ${response.status}`);
+    const payload = await response.json().catch(() => null);
+    throw new Error(payload?.detail || `Request failed with status ${response.status}`);
   }
 
   return response.json() as Promise<T>;
 }
 
+export async function createIncident(input: CreateIncidentInput): Promise<number> {
+  const user = JSON.parse(localStorage.getItem('plymouth-user') ?? 'null') as {
+    token?: string;
+  } | null;
+  if (!user?.token) throw new Error('Your session is missing. Please log in again.');
+
+  const result = await request<{ incidentId: number }>('/incidents', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${user.token}`,
+    },
+    body: JSON.stringify(input),
+  });
+  return result.incidentId;
+}
+
 export async function getIncidents(): Promise<Incident[]> {
   try {
     const data = await request<unknown[]>('/incidents');
-    return data.map(item => normalizeIncident(item as Record<string, unknown>));
+    return data
+      .map(item => normalizeIncident(item as Record<string, unknown>))
+      .filter(incident => incident.status === 'open');
   } catch {
     return [];
   }
@@ -87,14 +140,17 @@ export async function getIncident(id: number): Promise<Incident | null> {
   }
 }
 
-export async function volunteerForIncident(incidentId: number, userId: number): Promise<boolean> {
-  try {
-    await request(`/incidents/${incidentId}/join`, {
-      method: 'POST',
-      body: JSON.stringify({ userId }),
-    });
-    return true;
-  } catch {
-    return false;
-  }
+export async function volunteerForIncident(incidentId: number): Promise<void> {
+  const user = JSON.parse(localStorage.getItem('plymouth-user') ?? 'null') as {
+    token?: string;
+  } | null;
+  if (!user?.token) throw new Error('Your session is missing. Please log in again.');
+
+  await request(`/incidents/${incidentId}/join`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${user.token}`,
+    },
+  });
 }

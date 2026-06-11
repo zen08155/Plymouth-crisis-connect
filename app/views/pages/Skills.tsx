@@ -1,112 +1,159 @@
-import React, { useState, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useApp } from '../context/AppContext';
-
-interface Skill {
-  id: number;
-  label: string;
-}
-
-const DEFAULT_SKILLS: Skill[] = [
-  { id: 1, label: '' },
-  { id: 2, label: '' },
-  { id: 3, label: '' },
-];
+import React, { useEffect, useRef, useState } from 'react';
+import AppHeader from '../components/AppHeader';
+import {
+  CERTIFICATE_TYPES,
+  getMyCertificates,
+  submitCertificate,
+  type Certificate,
+  type CertificateType,
+} from '../api/certificates';
 
 export default function Skills() {
-  const navigate = useNavigate();
-  const { openSidebar } = useApp();
-  const [skills] = useState<Skill[]>(DEFAULT_SKILLS);
-  const [description, setDescription] = useState('');
-  const [fileName, setFileName] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+  const [certificateType, setCertificateType] = useState<CertificateType>('First Aid');
+  const [description, setDescription] = useState('');
+  const [fileName, setFileName] = useState('');
+  const [certificates, setCertificates] = useState<Certificate[]>([]);
+  const [error, setError] = useState('');
+  const [submitting, setSubmitting] = useState(false);
 
-  function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (file) setFileName(file.name);
+  async function loadCertificates() {
+    try {
+      setCertificates(await getMyCertificates());
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : 'Unable to load certificates.');
+    }
+  }
+
+  useEffect(() => {
+    loadCertificates();
+  }, []);
+
+  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!fileName) {
+      setError('Attach a certificate file before submitting.');
+      return;
+    }
+
+    setError('');
+    setSubmitting(true);
+    try {
+      await submitCertificate({
+        certificate_type: certificateType,
+        description: description.trim(),
+        file_name: fileName,
+      });
+      setDescription('');
+      setFileName('');
+      if (fileRef.current) fileRef.current.value = '';
+      await loadCertificates();
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : 'Certificate submission failed.');
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   return (
     <div className="pf-page">
-      {/* Header */}
-      <div className="pf-header">
-        <button className="pf-back-btn" onClick={() => navigate(-1)} aria-label="Go back">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
-               stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-            <polyline points="15 18 9 12 15 6"/>
-          </svg>
-        </button>
-        <div className="pf-tab">SKILLS</div>
-        <button className="ah-hamburger" onClick={openSidebar} aria-label="Open menu">
-          <span />
-          <span />
-          <span />
-        </button>
-      </div>
-
-      {/* Content */}
-      <div className="pf-skills-content">
-
-        {/* Skill Type card */}
-        <div className="welcome-card">
-          <p className="welcome-card-label">Skill Type</p>
-          <ul className="skill-list">
-            {skills.map(skill => (
-              <li key={skill.id} className="skill-item">
-                <span className="skill-dot" />
-                <span className="skill-name">{skill.label}</span>
-              </li>
-            ))}
-          </ul>
-          <button className="skill-sort-btn" aria-label="Reorder">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
-                 stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-              <polyline points="8 9 12 5 16 9"/>
-              <polyline points="16 15 12 19 8 15"/>
-            </svg>
-          </button>
-        </div>
-
-        {/* Bottom row */}
-        <div className="welcome-bottom">
-
-          {/* Skill Description */}
-          <div className="welcome-card welcome-card--half">
-            <p className="welcome-card-label">Skill Description</p>
-            <textarea
-              className="skill-textarea"
-              placeholder="Describe your skills and experience..."
-              value={description}
-              onChange={e => setDescription(e.target.value)}
-              rows={5}
-            />
+      <AppHeader showBack title="CERTIFICATES" />
+      <main className="cert-main">
+        <section className="pf-intro">
+          <div>
+            <span className="pf-eyebrow">Volunteer qualifications</span>
+            <h1>Certificates</h1>
+            <p>Submit certificates for review to unlock qualified response tasks.</p>
           </div>
+        </section>
 
-          {/* Proof of Certificate */}
-          <div className="welcome-card welcome-card--half">
-            <p className="welcome-card-label">Proof of Certificate</p>
-            <button
-              className="pdf-attach-btn"
-              onClick={() => fileRef.current?.click()}
-            >
-              <span>{fileName ?? '(attach PDF)'}</span>
-              <span className="pdf-attach-plus">+</span>
-            </button>
-            <input
-              ref={fileRef}
-              type="file"
-              accept=".pdf"
-              style={{ display: 'none' }}
-              onChange={handleFile}
-            />
-          </div>
+        <div className="cert-layout">
+          <form className="pf-form-card cert-form" onSubmit={handleSubmit}>
+            <div className="pf-form-heading">
+              <div>
+                <span className="pf-section-kicker">New submission</span>
+                <h2>Submit a certificate</h2>
+              </div>
+            </div>
 
+            <div className="pf-field">
+              <label className="pf-label" htmlFor="certificate-type">Certificate type</label>
+              <select
+                id="certificate-type"
+                className="pf-input"
+                value={certificateType}
+                onChange={event => setCertificateType(event.target.value as CertificateType)}
+              >
+                {CERTIFICATE_TYPES.map(type => (
+                  <option key={type} value={type}>{type}</option>
+                ))}
+              </select>
+            </div>
+
+            <div className="pf-field">
+              <label className="pf-label" htmlFor="certificate-description">Description</label>
+              <textarea
+                id="certificate-description"
+                className="pf-input cert-description"
+                value={description}
+                onChange={event => setDescription(event.target.value)}
+                placeholder="Course provider, qualification level, or relevant details"
+                minLength={3}
+                required
+              />
+            </div>
+
+            <div className="pf-field">
+              <label className="pf-label" htmlFor="certificate-file">Certificate file</label>
+              <button
+                type="button"
+                className="cert-file-button"
+                onClick={() => fileRef.current?.click()}
+              >
+                <span>{fileName || 'Select PDF or image'}</span>
+                <strong>Browse</strong>
+              </button>
+              <input
+                ref={fileRef}
+                id="certificate-file"
+                type="file"
+                accept=".pdf,image/*"
+                hidden
+                onChange={event => setFileName(event.target.files?.[0]?.name ?? '')}
+              />
+            </div>
+
+            {error && <p className="ci-error" role="alert">{error}</p>}
+            <div className="pf-actions">
+              <button className="pf-save-btn" type="submit" disabled={submitting}>
+                {submitting ? 'Submitting...' : 'Submit for review'}
+              </button>
+            </div>
+          </form>
+
+          <section className="cert-list-card">
+            <span className="pf-section-kicker">Your submissions</span>
+            <h2>Review status</h2>
+            {certificates.length === 0 ? (
+              <p className="cert-empty">No certificates submitted yet.</p>
+            ) : (
+              <div className="cert-list">
+                {certificates.map(certificate => (
+                  <article className="cert-row" key={certificate.id}>
+                    <div>
+                      <strong>{certificate.type}</strong>
+                      <span>{certificate.fileName}</span>
+                    </div>
+                    <span className={`cert-status cert-status--${certificate.status}`}>
+                      {certificate.status.replace('_', ' ')}
+                    </span>
+                  </article>
+                ))}
+              </div>
+            )}
+          </section>
         </div>
-
-        {/* Save button */}
-        <button className="welcome-submit-btn">Save Skills</button>
-
-      </div>
+      </main>
     </div>
   );
 }

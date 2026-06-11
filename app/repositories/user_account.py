@@ -88,6 +88,190 @@ class UserAccount:
             if cursor:
                 cursor.close()
 
+    def can_create_incidents(self, user_id: int) -> bool:
+        sql = """
+            SELECT role, isActive
+            FROM users
+            WHERE userId = %s
+        """
+        cursor = None
+
+        try:
+            conn = Database.get_connection()
+            cursor = conn.cursor(dictionary=True)
+            cursor.execute(sql, (user_id,))
+            user = cursor.fetchone()
+            return bool(
+                user
+                and user["isActive"]
+                and user["role"] == "coordinator"
+            )
+        finally:
+            if cursor:
+                cursor.close()
+
+    def get_user_role(self, user_id: int) -> str | None:
+        cursor = None
+        try:
+            conn = Database.get_connection()
+            cursor = conn.cursor(dictionary=True)
+            cursor.execute(
+                "SELECT role FROM users WHERE userId = %s AND isActive = TRUE",
+                (user_id,),
+            )
+            user = cursor.fetchone()
+            return user["role"] if user else None
+        finally:
+            if cursor:
+                cursor.close()
+
+    def submit_certificate(
+        self,
+        user_id: int,
+        certificate_type: str,
+        description: str,
+        file_name: str,
+    ) -> int | None:
+        conn = None
+        cursor = None
+        try:
+            conn = Database.get_connection()
+            cursor = conn.cursor()
+            cursor.execute(
+                """
+                INSERT INTO skills (
+                    title, description, skillType, skillDescription,
+                    proofOfCertificate, certificateName, verificationStatus
+                )
+                VALUES (%s, %s, 'certified', %s, %s, %s, 'under_review')
+                """,
+                (
+                    certificate_type,
+                    description,
+                    description,
+                    file_name,
+                    file_name,
+                ),
+            )
+            skill_id = cursor.lastrowid
+            cursor.execute(
+                "INSERT INTO volunteerSkills (skillId, userId) VALUES (%s, %s)",
+                (skill_id, user_id),
+            )
+            conn.commit()
+            return skill_id
+        except Exception:
+            if conn:
+                conn.rollback()
+            raise
+        finally:
+            if cursor:
+                cursor.close()
+
+    def list_user_certificates(self, user_id: int) -> list[dict]:
+        cursor = None
+        try:
+            conn = Database.get_connection()
+            cursor = conn.cursor(dictionary=True)
+            cursor.execute(
+                """
+                SELECT skills.skillId, skills.title, skills.description,
+                       skills.certificateName, skills.verificationStatus,
+                       skills.reviewedAt
+                FROM skills
+                JOIN volunteerSkills
+                  ON volunteerSkills.skillId = skills.skillId
+                WHERE volunteerSkills.userId = %s
+                ORDER BY skills.skillId DESC
+                """,
+                (user_id,),
+            )
+            return cursor.fetchall()
+        finally:
+            if cursor:
+                cursor.close()
+
+    def list_certificate_submissions(self) -> list[dict]:
+        cursor = None
+        try:
+            conn = Database.get_connection()
+            cursor = conn.cursor(dictionary=True)
+            cursor.execute(
+                """
+                SELECT skills.skillId, skills.title, skills.description,
+                       skills.certificateName, skills.verificationStatus,
+                       skills.reviewedAt, users.userId,
+                       users.name, users.surname, users.email
+                FROM skills
+                JOIN volunteerSkills
+                  ON volunteerSkills.skillId = skills.skillId
+                JOIN users
+                  ON users.userId = volunteerSkills.userId
+                ORDER BY
+                  CASE skills.verificationStatus
+                    WHEN 'under_review' THEN 0
+                    ELSE 1
+                  END,
+                  skills.skillId DESC
+                """
+            )
+            return cursor.fetchall()
+        finally:
+            if cursor:
+                cursor.close()
+
+    def review_certificate(
+        self,
+        skill_id: int,
+        reviewer_id: int,
+        status: str,
+    ) -> bool:
+        conn = None
+        cursor = None
+        try:
+            conn = Database.get_connection()
+            cursor = conn.cursor()
+            cursor.execute(
+                """
+                UPDATE skills
+                SET verificationStatus = %s, reviewedBy = %s, reviewedAt = %s
+                WHERE skillId = %s
+                """,
+                (status, reviewer_id, datetime.now(), skill_id),
+            )
+            conn.commit()
+            return cursor.rowcount > 0
+        except Exception:
+            if conn:
+                conn.rollback()
+            raise
+        finally:
+            if cursor:
+                cursor.close()
+
+    def has_verified_certificate(self, user_id: int, certificate_type: str) -> bool:
+        cursor = None
+        try:
+            conn = Database.get_connection()
+            cursor = conn.cursor()
+            cursor.execute(
+                """
+                SELECT 1
+                FROM skills
+                JOIN volunteerSkills
+                  ON volunteerSkills.skillId = skills.skillId
+                WHERE volunteerSkills.userId = %s
+                  AND skills.title = %s
+                  AND skills.verificationStatus = 'verified'
+                LIMIT 1
+                """,
+                (user_id, certificate_type),
+            )
+            return cursor.fetchone() is not None
+        finally:
+            if cursor:
+                cursor.close()
+
     def set_skills(self, user_id : int, skills: UserSkills) -> bool:
         """Sets skills for User in database, also connects the skills and user in volunteerSkills.
 

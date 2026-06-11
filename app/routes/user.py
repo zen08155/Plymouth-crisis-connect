@@ -1,10 +1,30 @@
-from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel
+from fastapi import APIRouter, Header, HTTPException
+from pydantic import BaseModel, Field
+from typing import Literal
 from app.repositories.user_account import UserAccount
 from datetime import date
+from app.security import create_access_token, verify_access_token
 
 router = APIRouter()
 service = UserAccount()
+
+CERTIFICATE_TYPES = Literal[
+    "First Aid",
+    "Water Rescue",
+    "Safeguarding",
+    "Manual Handling",
+    "Working at Height",
+]
+
+
+def authenticated_user_id(authorization: str | None) -> int:
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(401, "Authentication is required")
+
+    user_id = verify_access_token(authorization.removeprefix("Bearer ").strip())
+    if user_id is None:
+        raise HTTPException(401, "Your session is invalid or has expired")
+    return user_id
 
 @router.get("/michael")
 def test():
@@ -47,6 +67,7 @@ def register(data: RegisterRequest):
     return {
         "success": True,
         "message": "Account created",
+        "token": create_access_token(user.user_id),
         "user": {
             "id": user.user_id,
             "firstName": user.name,
@@ -68,6 +89,7 @@ def login(data: LoginRequests):
         raise HTTPException(status_code=401, detail="Invalid email or password.")
 
     return {
+        "token": create_access_token(user.user_id),
         "user": {
             "id": user.user_id,
             "firstName": user.name,
@@ -77,6 +99,92 @@ def login(data: LoginRequests):
         }
     }
 #endregion
+
+
+class CertificateSubmission(BaseModel):
+    certificate_type: CERTIFICATE_TYPES
+    description: str = Field(min_length=3, max_length=255)
+    file_name: str = Field(min_length=1, max_length=255)
+
+
+class CertificateReview(BaseModel):
+    status: Literal["verified", "rejected"]
+
+
+def serialize_certificate(certificate: dict):
+    return {
+        "id": certificate["skillId"],
+        "type": certificate["title"],
+        "description": certificate["description"],
+        "fileName": certificate["certificateName"],
+        "status": certificate["verificationStatus"],
+        "reviewedAt": certificate["reviewedAt"],
+    }
+
+
+@router.post("/certificates", status_code=201)
+def submit_certificate(
+    submission: CertificateSubmission,
+    authorization: str | None = Header(default=None),
+):
+    user_id = authenticated_user_id(authorization)
+    if service.get_user_role(user_id) != "volunteer":
+        raise HTTPException(403, "Only volunteers can submit certificates")
+
+    certificate_id = service.submit_certificate(
+        user_id,
+        submission.certificate_type,
+        submission.description.strip(),
+        submission.file_name.strip(),
+    )
+    return {
+        "success": True,
+        "certificateId": certificate_id,
+        "message": "Certificate submitted for review",
+    }
+
+
+@router.get("/certificates/me")
+def my_certificates(authorization: str | None = Header(default=None)):
+    user_id = authenticated_user_id(authorization)
+    return [
+        serialize_certificate(certificate)
+        for certificate in service.list_user_certificates(user_id)
+    ]
+
+
+@router.get("/certificate-submissions")
+def certificate_submissions(authorization: str | None = Header(default=None)):
+    reviewer_id = authenticated_user_id(authorization)
+    if service.get_user_role(reviewer_id) not in {"coordinator", "system_manager"}:
+        raise HTTPException(403, "Only coordinators and system managers can review certificates")
+
+    return [
+        {
+            **serialize_certificate(certificate),
+            "user": {
+                "id": certificate["userId"],
+                "name": f"{certificate['name']} {certificate['surname']}",
+                "email": certificate["email"],
+            },
+        }
+        for certificate in service.list_certificate_submissions()
+    ]
+
+
+@router.patch("/certificate-submissions/{certificate_id}")
+def review_certificate(
+    certificate_id: int,
+    review: CertificateReview,
+    authorization: str | None = Header(default=None),
+):
+    reviewer_id = authenticated_user_id(authorization)
+    if service.get_user_role(reviewer_id) not in {"coordinator", "system_manager"}:
+        raise HTTPException(403, "Only coordinators and system managers can review certificates")
+
+    if not service.review_certificate(certificate_id, reviewer_id, review.status):
+        raise HTTPException(404, "Certificate submission not found")
+    return {"success": True, "status": review.status}
 
 #region setskills
 class UserSkills(BaseModel):
