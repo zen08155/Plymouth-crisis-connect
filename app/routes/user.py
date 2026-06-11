@@ -11,24 +11,26 @@ def test():
     return {"success" : True, "message" : "Heeee heeee"}
 
 #region register users
-@router.post("/register")
-def register(
-    firstname: str,
-    surname: str,
-    password: str,
-    email: str,
-    phone_nr: str,
-    birthday: date,
+class RegisterRequest(BaseModel):
+    firstname: str
+    surname: str
+    password: str
+    email: str
+    phone_nr: str
+    birthday: date
     role: str = "volunteer"
-):
+
+
+@router.post("/register")
+def register(data: RegisterRequest):
     success = service.create_account(
-        firstname,
-        surname,
-        password,
-        email,
-        phone_nr,
-        birthday,
-        role
+        data.firstname,
+        data.surname,
+        data.password,
+        data.email,
+        data.phone_nr,
+        data.birthday,
+        data.role
     )
 
     if not success:
