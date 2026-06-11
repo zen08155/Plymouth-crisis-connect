@@ -12,6 +12,7 @@ class Incident:
             latitude : Decimal,
             longitude : Decimal,
             priority : str,
+            required_certificate: str | None = None,
             status : bool = True,
             created_at : datetime | None = None,
             created_by : int | None = None,
@@ -26,11 +27,9 @@ class Incident:
         self.latitude = latitude
         self.longitude = longitude
         self.priority = priority
+        self.required_certificate = required_certificate
         self.status = status
         self.created_at = created_at
         self.created_by = created_by
         self.ended_at = ended_at
         self.ended_by = ended_by
-
-
-        

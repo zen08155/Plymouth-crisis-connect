@@ -15,6 +15,7 @@ interface RegistrationForm {
 }
 
 interface RegistrationResponse {
+  token: string;
   user: {
     id: number;
     firstName: string;
@@ -99,12 +100,12 @@ export default function Register() {
         throw new Error(payload?.detail || 'Registration failed. Please try again.');
       }
 
-      const { user } = payload as RegistrationResponse;
+      const { user, token } = payload as RegistrationResponse;
       if (!user) {
         throw new Error('Account created, but automatic login failed.');
       }
 
-      localStorage.setItem('plymouth-user', JSON.stringify(user));
+      localStorage.setItem('plymouth-user', JSON.stringify({ ...user, token }));
       // Nieuwe gebruiker -> front-end context zetten en naar de welcome/onboarding
       register(`${form.firstName} ${form.surname}`.trim());
       navigate('/welcome', { replace: true });

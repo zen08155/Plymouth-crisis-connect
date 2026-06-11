@@ -10,7 +10,8 @@ class CoordinatorRepository:
     def list_active_incidents(self) -> list[dict]:
         sql = """
             SELECT incidentId, title, description, type, latitude, longitude,
-                   priority, status, createdAt, createdBy, endedAt, endedBy
+                   priority, requiredCertificate, status, createdAt, createdBy,
+                   endedAt, endedBy
             FROM incidents
             WHERE endedAt IS NULL AND status = TRUE
             ORDER BY createdAt DESC
@@ -36,7 +37,8 @@ class CoordinatorRepository:
     def get_incident(self, incident_id: int) -> dict | None:
         sql = """
             SELECT incidentId, title, description, type, latitude, longitude,
-                   priority, status, createdAt, createdBy, endedAt, endedBy
+                   priority, requiredCertificate, status, createdAt, createdBy,
+                   endedAt, endedBy
             FROM incidents
             WHERE incidentId = %s
         """
@@ -58,7 +60,7 @@ class CoordinatorRepository:
             if cursor:
                 cursor.close()
 
-    def create_incident(self, incident : Incident, coordinator_id : int) -> bool:
+    def create_incident(self, incident : Incident, coordinator_id : int) -> int | None:
         """Creates an incident and immediatelly sends out a notification using the created incident
 
         Args:
@@ -68,24 +70,33 @@ class CoordinatorRepository:
         Returns:
             bool: on success/failure
         """
-        sql = "INSERT INTO incidents (title, description, type, importantData, importantDataExtra, latitude, longitude, priority, status, createdAt, createdBy) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"
+        sql = "INSERT INTO incidents (title, description, type, importantData, importantDataExtra, latitude, longitude, priority, requiredCertificate, status, createdAt, createdBy) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"
         sql_notifs = "INSERT INTO incidentNotification(incidentId, title, sentAt) VALUES (%s, %s, %s)"
         current_time = datetime.now()
 
-        try : 
-            cursor = Database.execute(sql, (incident.title, incident.description, incident.incident_type, incident.important_data, incident.important_data_extra, incident.latitude, incident.longitude, incident.priority, incident.status, current_time, coordinator_id))
+        conn = None
+        cursor = None
 
-            #creates the notification
+        try:
+            conn = Database.get_connection()
+            cursor = conn.cursor()
+            cursor.execute(sql, (incident.title, incident.description, incident.incident_type, incident.important_data, incident.important_data_extra, incident.latitude, incident.longitude, incident.priority, incident.required_certificate, incident.status, current_time, coordinator_id))
             incident_id = cursor.lastrowid
-            Database.execute(sql_notifs, (incident_id, incident.title, current_time))
-
-            #create the main-team on incident-creation
-            self.create_team(incident_id, coordinator_id, "MAIN - " + incident.title, None)
-            return True
-             
+            cursor.execute(sql_notifs, (incident_id, incident.title, current_time))
+            cursor.execute(
+                "INSERT INTO team (incidentId, coordinatorId, teamLeaderId, name, task, createdAt, isActive) VALUES (%s, %s, %s, %s, %s, %s, %s)",
+                (incident_id, coordinator_id, None, "MAIN - " + incident.title, "", current_time, True),
+            )
+            conn.commit()
+            return incident_id
         except Exception as e:
-                print("error: " + str(e))
-                return False
+            if conn:
+                conn.rollback()
+            print("error: " + str(e))
+            return None
+        finally:
+            if cursor:
+                cursor.close()
 
     def create_team(self, incident_id : int, coordinator_id : int, name : str, team_leader_id : int | None = None, task : str = "", createdAt : datetime = datetime.now(), is_active : bool = True) -> bool:
         """Creates a team

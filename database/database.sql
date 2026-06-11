@@ -29,6 +29,7 @@ CREATE TABLE IF NOT EXISTS incidents (
   latitude decimal(10,7) NOT NULL,
   longitude decimal(10,7) NOT NULL,
   priority VARCHAR(255) NOT NULL,
+  requiredCertificate VARCHAR(255),
   status Bool,
   createdAt DATETIME NOT NULL,
   createdBy INTEGER NOT NULL, 
@@ -51,7 +52,11 @@ CREATE TABLE IF NOT EXISTS skills (
   proofOfCertificate TEXT ,
   certificateName VARCHAR(255) ,
   expirationDateCertificate DATETIME,
-  courseTakenAt DATETIME
+  courseTakenAt DATETIME,
+  verificationStatus VARCHAR(32) NOT NULL DEFAULT 'under_review',
+  reviewedBy INTEGER,
+  reviewedAt DATETIME,
+  FOREIGN KEY (reviewedBy) REFERENCES users(userId)
 );
 
 

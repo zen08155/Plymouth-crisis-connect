@@ -11,7 +11,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
   ------------------------------------------------------------------
 */
 
-export type Role = 'volunteer' | 'admin';
+export type Role = 'volunteer' | 'coordinator' | 'system_manager' | 'admin';
 export type VerificationStatus = 'not_submitted' | 'under_review' | 'verified' | 'rejected';
 
 interface AuthState {
@@ -23,7 +23,7 @@ interface AuthState {
 
 interface AppContextValue extends AuthState {
   // Auth
-  login: (asAdmin?: boolean) => void;
+  login: (role?: Role) => void;
   register: (name?: string) => void;
   logout: () => void;
   // Verificatie
@@ -69,11 +69,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     ...state,
 
     // Bestaande gebruiker logt in -> direct naar de app (geen onboarding)
-    login: (asAdmin = false) =>
+    login: (role = 'volunteer') =>
       setState(prev => ({
         ...prev,
         isAuthenticated: true,
-        role: asAdmin ? 'admin' : 'volunteer',
+        role,
       })),
 
     // Nieuwe gebruiker registreert -> moet nog de welcome/onboarding doen

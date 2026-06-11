@@ -5,12 +5,28 @@ INSERT INTO users (
   updatedAt, isActive, avgResponseTimeMins, pushNotifications, status
 )
 SELECT
-  '$2b$12$XDGA7HNC7CWKTnJbFPGCke2Yu8CugMLDdbFWe8r0y454tps0oHlF2',
+  '$2b$12$0df4wOaCjpuZYECZGU5sl.Yo7POgmNTCC/OiFyOhXBZzaufqNmn8a',
   'Test', 'Coordinator', 'coordinator@example.com', 'coordinator',
   '+447700900000', '1990-01-01', NOW(), NULL, TRUE, 0, TRUE, 'available'
-WHERE NOT EXISTS (SELECT 1 FROM users);
+WHERE NOT EXISTS (
+  SELECT 1 FROM users WHERE email = 'coordinator@example.com'
+);
 
-SET @seed_user_id = (SELECT MIN(userId) FROM users);
+INSERT INTO users (
+  password, name, surname, email, role, phoneNumber, birthday, createdAt,
+  updatedAt, isActive, avgResponseTimeMins, pushNotifications, status
+)
+SELECT
+  '$2b$12$hJyPnVKtymm8m8Jb3afBeOqlYDttIWJYupXNaHO4m8bJnD.FVGXsC',
+  'Test', 'System Manager', 'manager@example.com', 'system_manager',
+  '+447700900001', '1990-01-01', NOW(), NULL, TRUE, 0, TRUE, 'available'
+WHERE NOT EXISTS (
+  SELECT 1 FROM users WHERE email = 'manager@example.com'
+);
+
+SET @seed_user_id = (
+  SELECT userId FROM users WHERE email = 'coordinator@example.com' LIMIT 1
+);
 
 INSERT INTO incidents (
   title, description, type, importantData, importantDataExtra, latitude,
@@ -63,6 +79,14 @@ SELECT
 WHERE NOT EXISTS (
   SELECT 1 FROM incidents WHERE title = 'Temporary shelter support in the city centre'
 );
+
+UPDATE incidents
+SET requiredCertificate = 'First Aid'
+WHERE title = 'Flood response at Plymouth Barbican';
+
+UPDATE incidents
+SET requiredCertificate = 'Safeguarding'
+WHERE title = 'Temporary shelter support in the city centre';
 
 INSERT INTO team (incidentId, coordinatorId, teamLeaderId, name, task, createdAt, isActive)
 SELECT

@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import Logo from '../components/Logo';
-import { useApp } from '../context/AppContext';
+import { useApp, type Role } from '../context/AppContext';
 
 interface LoginResponse {
+  token: string;
   user: {
     id: number;
     firstName: string;
@@ -52,11 +53,12 @@ export default function Login() {
         throw new Error(payload?.detail || 'Unable to log in. Please try again.');
       }
 
-      const { user } = payload as LoginResponse;
-      localStorage.setItem('plymouth-user', JSON.stringify(user));
+      const { user, token } = payload as LoginResponse;
+      localStorage.setItem('plymouth-user', JSON.stringify({ ...user, token }));
       // Sync front-end context (rol/verificatie/statusbalk)
-      login(user.role === 'admin');
-      navigate('/tasks', { replace: true });
+      const role = user.role as Role;
+      login(role);
+      navigate(role === 'coordinator' ? '/coordinator/incidents/new' : '/tasks', { replace: true });
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'Unable to log in.');
     } finally {
@@ -163,7 +165,7 @@ export default function Login() {
             backend echte rollen levert. */}
         <button
           className="login-admin-link"
-          onClick={() => { login(true); navigate('/admin'); }}
+          onClick={() => { login('admin'); navigate('/admin'); }}
         >
           Log in as admin (demo)
         </button>

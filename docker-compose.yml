@@ -2,7 +2,7 @@ services:
   web:
     build: .
     ports:
-      - "5174:5174"
+      - "5000:5000"
     depends_on:
       api:
         condition: service_healthy
@@ -17,6 +17,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.api
+    restart: unless-stopped
     ports:
       - "8001:8000"
     depends_on:
@@ -28,6 +29,7 @@ services:
       DB_NAME: plymouthCrisis
       DB_USER: root
       DB_PASSWORD: root
+      AUTH_TOKEN_SECRET: local-docker-development-secret
     volumes:
       - ./app:/app/app
     healthcheck:

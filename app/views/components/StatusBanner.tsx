@@ -1,47 +1,57 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
+import { getMyCertificates, type CertificateStatus } from '../api/certificates';
 import { useApp } from '../context/AppContext';
 
-/*
-  NL: Statusbalk die bovenaan de app verschijnt zolang de gebruiker
-  nog niet geverifieerd is. Bij 'verified' verdwijnt de balk volledig.
-*/
-
 export default function StatusBanner() {
-  const { verification } = useApp();
+  const { role } = useApp();
+  const [status, setStatus] = useState<CertificateStatus | 'none' | null>(null);
 
-  if (verification === 'verified') return null;
+  useEffect(() => {
+    if (role !== 'volunteer') return;
+    getMyCertificates()
+      .then(certificates => {
+        if (certificates.some(certificate => certificate.status === 'verified')) {
+          setStatus('verified');
+        } else if (certificates.some(certificate => certificate.status === 'under_review')) {
+          setStatus('under_review');
+        } else if (certificates.some(certificate => certificate.status === 'rejected')) {
+          setStatus('rejected');
+        } else {
+          setStatus('none');
+        }
+      })
+      .catch(() => setStatus(null));
+  }, [role]);
 
-  if (verification === 'under_review') {
+  if (role !== 'volunteer' || status === null || status === 'verified') return null;
+
+  if (status === 'under_review') {
     return (
       <div className="stb-banner stb-banner--review">
         <span className="stb-dot" />
         <span className="stb-text">
-          <strong>Onder review</strong> — je certificaten worden gecontroleerd. Taken met
-          vereiste skills zijn nog vergrendeld.
+          <strong>Under review</strong> — certificate-restricted tasks remain locked until approval.
         </span>
       </div>
     );
   }
 
-  if (verification === 'rejected') {
+  if (status === 'rejected') {
     return (
       <div className="stb-banner stb-banner--rejected">
         <span className="stb-dot" />
         <span className="stb-text">
-          <strong>Afgekeurd</strong> — je verificatie is niet goedgekeurd. Voeg je certificaten
-          opnieuw toe via Skills.
+          <strong>Certificate rejected</strong> — submit an updated certificate from Certificates.
         </span>
       </div>
     );
   }
 
-  // not_submitted
   return (
     <div className="stb-banner stb-banner--todo">
       <span className="stb-dot" />
       <span className="stb-text">
-        <strong>Niet ingediend</strong> — vul je skills en certificaten in om geverifieerd te
-        worden.
+        <strong>No verified certificates</strong> — qualified tasks are locked until approval.
       </span>
     </div>
   );

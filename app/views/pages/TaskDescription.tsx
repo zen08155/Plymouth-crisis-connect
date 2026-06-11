@@ -1,5 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
 import Logo from '../components/Logo';
 import {
   getIncident,
@@ -7,6 +9,16 @@ import {
   volunteerForIncident,
   type Incident,
 } from '../api/incidents';
+import {
+  getMyCertificates,
+  verifiedCertificateTypes,
+} from '../api/certificates';
+import {
+  addPlymouthTiles,
+  createLocationMarkerIcon,
+  PLYMOUTH_BOUNDS,
+  PLYMOUTH_MAP_OPTIONS,
+} from '../map/plymouth';
 
 function getLocationLabel(incident: Incident) {
   const locationMatch = incident.title.match(/\b(?:at|in|near)\s+(.+)$/i);
@@ -16,10 +28,20 @@ function getLocationLabel(incident: Incident) {
 export default function TaskDescription() {
   const navigate = useNavigate();
   const { incidentId } = useParams();
+  const mapRef = useRef<HTMLDivElement>(null);
+  const mapInstance = useRef<L.Map | null>(null);
   const [incident, setIncident] = useState<Incident | null>(null);
   const [loading, setLoading] = useState(true);
   const [volunteered, setVolunteered] = useState(false);
   const [volunteerError, setVolunteerError] = useState('');
+  const [verifiedCertificates, setVerifiedCertificates] = useState<Set<string>>(new Set());
+  const currentRole = (() => {
+    try {
+      return JSON.parse(localStorage.getItem('plymouth-user') ?? 'null')?.role as string | undefined;
+    } catch {
+      return undefined;
+    }
+  })();
 
   useEffect(() => {
     const id = Number(incidentId || 101);
@@ -30,18 +52,52 @@ export default function TaskDescription() {
     });
   }, [incidentId]);
 
+  useEffect(() => {
+    if (currentRole === 'volunteer') {
+      getMyCertificates()
+        .then(certificates => setVerifiedCertificates(verifiedCertificateTypes(certificates)))
+        .catch(() => setVerifiedCertificates(new Set()));
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!incident || !mapRef.current) return;
+
+    mapInstance.current?.remove();
+    const map = L.map(mapRef.current, {
+      ...PLYMOUTH_MAP_OPTIONS,
+      center: [incident.latitude, incident.longitude],
+      zoom: 15,
+      zoomControl: false,
+      dragging: false,
+      scrollWheelZoom: false,
+      doubleClickZoom: false,
+      boxZoom: false,
+      keyboard: false,
+      touchZoom: false,
+    });
+    addPlymouthTiles(map);
+    L.marker(
+      [incident.latitude, incident.longitude],
+      { icon: createLocationMarkerIcon() },
+    ).addTo(map);
+    map.fitBounds(PLYMOUTH_BOUNDS, { padding: [20, 20], maxZoom: 15 });
+    map.setView([incident.latitude, incident.longitude], 15);
+    mapInstance.current = map;
+
+    return () => {
+      map.remove();
+      mapInstance.current = null;
+    };
+  }, [incident]);
+
   async function handleVolunteer() {
     if (!incident) return;
 
     setVolunteerError('');
 
     try {
-      const storedUser = localStorage.getItem('plymouth-user');
-      const userId = storedUser ? Number(JSON.parse(storedUser).id) : NaN;
-      if (!Number.isInteger(userId)) throw new Error('Your session could not be read.');
-
-      const success = await volunteerForIncident(incident.id, userId);
-      if (!success) throw new Error('You could not be added to this incident.');
+      await volunteerForIncident(incident.id);
       setVolunteered(true);
     } catch (error) {
       setVolunteerError(error instanceof Error ? error.message : 'Unable to volunteer.');
@@ -50,12 +106,14 @@ export default function TaskDescription() {
 
   const incidentColor = getIncidentTypeColor(incident?.type ?? 'Other');
   const locationLabel = incident ? getLocationLabel(incident) : '';
-  const mapEmbedUrl = incident
-    ? `https://www.openstreetmap.org/export/embed.html?bbox=${incident.longitude - 0.008}%2C${incident.latitude - 0.005}%2C${incident.longitude + 0.008}%2C${incident.latitude + 0.005}&layer=mapnik&marker=${incident.latitude}%2C${incident.longitude}`
-    : '';
   const directionsUrl = incident
     ? `https://www.google.com/maps/dir/?api=1&destination=${incident.latitude},${incident.longitude}`
     : '#';
+  const locked = Boolean(
+    incident?.requiredCertificate
+    && currentRole === 'volunteer'
+    && !verifiedCertificates.has(incident.requiredCertificate),
+  );
 
   return (
     <div
@@ -83,12 +141,10 @@ export default function TaskDescription() {
         ) : (
           <>
             <section className="incident-hero">
-              <iframe
-                title={`Map showing ${locationLabel}`}
-                src={mapEmbedUrl}
+              <div
+                ref={mapRef}
                 className="incident-hero-map"
-                loading="lazy"
-                tabIndex={-1}
+                aria-label={`Map showing ${locationLabel} in Plymouth`}
               />
               <div className="incident-hero-shade" aria-hidden="true" />
 
@@ -135,19 +191,33 @@ export default function TaskDescription() {
                     <span>Current status</span>
                     <strong>{incident.status}</strong>
                   </div>
+                  <div>
+                    <span>Required certificate</span>
+                    <strong>{incident.requiredCertificate || 'None'}</strong>
+                  </div>
                 </div>
               </article>
 
               <aside className="incident-action-card">
                 <span className="incident-section-label">Join the response</span>
-                <h2>Ready to help?</h2>
-                <p>Volunteering adds you to the incident and its main response team.</p>
+                <h2>{locked ? 'Certificate required' : 'Ready to help?'}</h2>
+                <p>
+                  {locked
+                    ? `A verified ${incident.requiredCertificate} certificate is required for this task.`
+                    : 'Volunteering adds you to the incident and its main response team.'}
+                </p>
                 <button
                   className={`incident-volunteer ${volunteered ? 'incident-volunteer--active' : ''}`}
                   onClick={handleVolunteer}
-                  disabled={volunteered}
+                  disabled={volunteered || locked || currentRole !== 'volunteer'}
                 >
-                  {volunteered ? 'You are on the team' : 'Volunteer for this task'}
+                  {volunteered
+                    ? 'You are on the team'
+                    : locked
+                      ? `Requires ${incident.requiredCertificate}`
+                      : currentRole !== 'volunteer'
+                        ? 'Volunteer access only'
+                        : 'Volunteer for this task'}
                 </button>
                 {volunteerError && <p className="incident-action-error" role="alert">{volunteerError}</p>}
               </aside>

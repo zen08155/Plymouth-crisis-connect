@@ -1,133 +1,103 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import AppHeader from '../components/AppHeader';
-import { useApp } from '../context/AppContext';
-
-/*
-  NL (voor backend-team):
-  ------------------------------------------------------------------
-  Dit is het admin-dashboard voor verificaties (front-end mock).
-  - De "mock" rijen hieronder zijn dummy aanvragen.
-  - De ECHTE huidige gebruiker komt uit de AppContext; admin kan die
-    goedkeuren/afkeuren via setVerification(). Dit update localStorage,
-    zodat de statusbalk aan de volunteer-kant verdwijnt na goedkeuren.
-  Vervang de mock-lijst later door echte data uit de API.
-  ------------------------------------------------------------------
-*/
-
-interface PendingRequest {
-  id: number;
-  name: string;
-  skill: string;
-}
-
-const MOCK_REQUESTS: PendingRequest[] = [
-  { id: 101, name: 'Emma Johnson',  skill: 'First Aid Certified' },
-  { id: 102, name: 'Liam Williams', skill: 'Boat Licence' },
-  { id: 103, name: 'Sophia Brown',  skill: 'Mental Health First Aid' },
-];
+import {
+  getCertificateSubmissions,
+  reviewCertificate,
+  type CertificateSubmission,
+} from '../api/certificates';
 
 export default function AdminDashboard() {
-  const { verification, setVerification } = useApp();
-  const [handled, setHandled] = useState<Record<number, 'verified' | 'rejected'>>({});
+  const [submissions, setSubmissions] = useState<CertificateSubmission[]>([]);
+  const [error, setError] = useState('');
+  const [updatingId, setUpdatingId] = useState<number | null>(null);
 
-  function handleMock(id: number, decision: 'verified' | 'rejected') {
-    setHandled(prev => ({ ...prev, [id]: decision }));
+  async function loadSubmissions() {
+    try {
+      setSubmissions(await getCertificateSubmissions());
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : 'Unable to load submissions.');
+    }
+  }
+
+  useEffect(() => {
+    loadSubmissions();
+  }, []);
+
+  async function handleReview(
+    certificateId: number,
+    status: 'verified' | 'rejected',
+  ) {
+    setError('');
+    setUpdatingId(certificateId);
+    try {
+      await reviewCertificate(certificateId, status);
+      await loadSubmissions();
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : 'Unable to update certificate.');
+    } finally {
+      setUpdatingId(null);
+    }
   }
 
   return (
     <div className="adm-page">
-      <AppHeader title="Admin · Verificaties" />
+      <AppHeader title="CERTIFICATE REVIEWS" />
+      <main className="adm-body">
+        <div>
+          <span className="pf-eyebrow">Coordinator tools</span>
+          <h1 className="adm-heading">Certificate submissions</h1>
+          <p className="adm-intro">
+            Approve certificates to unlock incidents that require that qualification.
+          </p>
+        </div>
 
-      <div className="adm-body">
-        <p className="adm-intro">
-          Beoordeel openstaande verificatie-aanvragen. Goedgekeurde gebruikers krijgen toegang
-          tot taken die skills/certificaten vereisen.
-        </p>
+        {error && <p className="ci-error" role="alert">{error}</p>}
 
-        {/* Huidige (ingelogde) gebruiker — echte state uit context */}
         <section className="adm-section">
-          <h2 className="adm-section-title">Jouw account</h2>
-          <div className="adm-row">
-            <div className="adm-avatar" aria-hidden="true">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none"
-                   stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/>
-                <circle cx="12" cy="7" r="4"/>
-              </svg>
-            </div>
-            <div className="adm-row-info">
-              <span className="adm-row-name">Huidige gebruiker</span>
-              <span className={`adm-status adm-status--${verification}`}>
-                {verification === 'verified' && 'Geverifieerd'}
-                {verification === 'under_review' && 'Onder review'}
-                {verification === 'rejected' && 'Afgekeurd'}
-                {verification === 'not_submitted' && 'Niet ingediend'}
-              </span>
-            </div>
-            <div className="adm-actions">
-              <button
-                className="adm-btn adm-btn--approve"
-                onClick={() => setVerification('verified')}
-                disabled={verification === 'verified'}
-              >
-                Goedkeuren
-              </button>
-              <button
-                className="adm-btn adm-btn--reject"
-                onClick={() => setVerification('rejected')}
-                disabled={verification === 'rejected'}
-              >
-                Afkeuren
-              </button>
-            </div>
-          </div>
-        </section>
-
-        {/* Mock-aanvragen */}
-        <section className="adm-section">
-          <h2 className="adm-section-title">Openstaande aanvragen</h2>
+          <h2 className="adm-section-title">Submissions</h2>
           <div className="adm-list">
-            {MOCK_REQUESTS.map(req => {
-              const decision = handled[req.id];
-              return (
-                <div key={req.id} className="adm-row">
-                  <div className="adm-avatar" aria-hidden="true">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none"
-                         stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/>
-                      <circle cx="12" cy="7" r="4"/>
-                    </svg>
-                  </div>
-                  <div className="adm-row-info">
-                    <span className="adm-row-name">{req.name}</span>
-                    <span className="adm-row-skill">{req.skill}</span>
-                  </div>
-                  {decision ? (
-                    <span className={`adm-status adm-status--${decision}`}>
-                      {decision === 'verified' ? 'Goedgekeurd' : 'Afgekeurd'}
-                    </span>
-                  ) : (
-                    <div className="adm-actions">
-                      <button
-                        className="adm-btn adm-btn--approve"
-                        onClick={() => handleMock(req.id, 'verified')}
-                      >
-                        Goedkeuren
-                      </button>
-                      <button
-                        className="adm-btn adm-btn--reject"
-                        onClick={() => handleMock(req.id, 'rejected')}
-                      >
-                        Afkeuren
-                      </button>
-                    </div>
-                  )}
+            {submissions.length === 0 && (
+              <p className="cert-empty">No certificate submissions found.</p>
+            )}
+            {submissions.map(submission => (
+              <article className="adm-row" key={submission.id}>
+                <div className="adm-avatar" aria-hidden="true">
+                  {submission.user.name.charAt(0).toUpperCase()}
                 </div>
-              );
-            })}
+                <div className="adm-row-info">
+                  <span className="adm-row-name">{submission.user.name}</span>
+                  <span className="adm-row-skill">
+                    {submission.type} · {submission.fileName}
+                  </span>
+                  <span className="adm-row-email">{submission.user.email}</span>
+                </div>
+                {submission.status === 'under_review' ? (
+                  <div className="adm-actions">
+                    <button
+                      className="adm-btn adm-btn--approve"
+                      disabled={updatingId === submission.id}
+                      onClick={() => handleReview(submission.id, 'verified')}
+                    >
+                      Approve
+                    </button>
+                    <button
+                      className="adm-btn adm-btn--reject"
+                      disabled={updatingId === submission.id}
+                      onClick={() => handleReview(submission.id, 'rejected')}
+                    >
+                      Reject
+                    </button>
+                  </div>
+                ) : (
+                  <span className={`adm-status adm-status--${submission.status}`}>
+                    {submission.status}
+                  </span>
+                )}
+              </article>
+            ))}
           </div>
         </section>
-      </div>
+      </main>
     </div>
   );
 }
