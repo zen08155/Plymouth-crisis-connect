@@ -32,14 +32,41 @@ export default function Login() {
     login();
     navigate('/tasks');
   }
-  function handleAdminLogin() {
-    const token = 'eyJzdWIiOjQsImV4cCI6MTc4MTIzMjk4MH0.pcv__AfKfiDpg0LRUNlFypTV99sXf2i5FFdmca6sdsc'
-    const user = {email: "admin@adminemail.com", firstName: "root", id: 4, role: "coordinator", surname: "root"}
-    localStorage.setItem('plymouth-user', JSON.stringify({ ...user, token }));
-    login('admin'); 
-    navigate('/admin'); 
+  async function handleAdminLogin() {
+    const token = '$2b$12$hJyPnVKtymm8m8Jb3afBeOqlYDttIWJYupXNaHO4m8bJnD.FVGXsC'
+    const user = {email: 'manager@example.com', firstName: 'Test', id: 1, role: 'system_manager', surname: 'root', password:"test",}
+
+    setError('');
+    setSubmitting(true);
+
+    try {
+      const response = await fetch('/api/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: 'manager@example.com'.trim().toLowerCase(),
+          password:'Test',
+        }),
+      });
+      const payload = await response.json().catch(() => null);
+      if (!response.ok) {
+        throw new Error(payload?.detail || 'Unable to log in. Please try again.');
+      }
+
+      const { user, token } = payload as LoginResponse;
+      localStorage.setItem('plymouth-user', JSON.stringify({ ...user, token }));
+      // Sync front-end context (rol/verificatie/statusbalk)
+      const role = user.role as Role;
+      login(role);
+      navigate(role === 'system_manager' ? '/admin' : role === 'coordinator'? '/coordinator/incidents/new':'/tasks', { replace: true });
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : 'Unable to log in.');
+    } finally {
+      setSubmitting(false);
+    }
   }
 
+  
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError('');
@@ -55,7 +82,6 @@ export default function Login() {
         }),
       });
       const payload = await response.json().catch(() => null);
-      console.log(payload);
       if (!response.ok) {
         throw new Error(payload?.detail || 'Unable to log in. Please try again.');
       }

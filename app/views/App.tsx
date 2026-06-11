@@ -52,7 +52,6 @@ function RequireVolunteer({ children }: { children: React.ReactNode }) {
 function RequireCertificateReviewer({ children }: { children: React.ReactNode }) {
   try {
     const user = JSON.parse(localStorage.getItem('plymouth-user') ?? 'null');
-    console.log(user);
     return ['coordinator', 'system_manager'].includes(user?.role)
       ? children
       : <Navigate to="/tasks" replace />;
