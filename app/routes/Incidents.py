@@ -1,14 +1,14 @@
-from decimal import *
 from datetime import datetime
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from decimal import Decimal
-from datetime import datetime
 from app.repositories.coordinator_repository import CoordinatorRepository
+from app.repositories.user_account import UserAccount
 
 
 
 service = CoordinatorRepository()
+user_service = UserAccount()
 router = APIRouter()
 
 class Incident(BaseModel):
@@ -33,7 +33,49 @@ class priority_update(BaseModel):
 
 class update_des(BaseModel):
     description: str | None = None
-    
+
+class VolunteerJoin(BaseModel):
+    userId: int
+
+
+def serialize_incident(incident: dict):
+    return {
+        "id": incident["incidentId"],
+        "incidentId": incident["incidentId"],
+        "title": incident["title"],
+        "description": incident["description"],
+        "type": incident["type"],
+        "latitude": float(incident["latitude"]),
+        "longitude": float(incident["longitude"]),
+        "priority": incident["priority"],
+        "status": "closed" if incident["endedAt"] else "open",
+        "createdAt": incident["createdAt"],
+        "createdBy": incident["createdBy"],
+    }
+
+
+@router.get("/incidents")
+def get_incidents():
+    try:
+        return [
+            serialize_incident(incident)
+            for incident in service.list_active_incidents()
+        ]
+    except Exception as error:
+        raise HTTPException(500, "Failed to load incidents") from error
+
+
+@router.get("/incidents/{incident_id}")
+def get_incident(incident_id: int):
+    try:
+        incident = service.get_incident(incident_id)
+    except Exception as error:
+        raise HTTPException(500, "Failed to load incident") from error
+
+    if incident is None:
+        raise HTTPException(404, "Incident not found")
+
+    return serialize_incident(incident)
 
 #create
 #FIXME: convert location to coords method has no endpoint yet.
@@ -70,6 +112,16 @@ def update_incident_priority(incident_id: int, update: priority_update):
     
     return {"success": True, "message": "Priority updated successfully"}
 
+
+@router.post("/incidents/{incident_id}/join")
+def join_incident(incident_id: int, request: VolunteerJoin):
+    if service.get_incident(incident_id) is None:
+        raise HTTPException(404, "Incident not found")
+
+    if not user_service.volunteer_for(request.userId, incident_id):
+        raise HTTPException(409, "Unable to volunteer for this incident")
+
+    return {"success": True, "message": "Volunteered successfully"}
 
 
 
