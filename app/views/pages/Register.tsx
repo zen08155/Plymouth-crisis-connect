@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { getCountries, getCountryCallingCode, type CountryCode } from 'libphonenumber-js/min';
 import { useNavigate } from 'react-router-dom';
+import { useApp } from '../context/AppContext';
 
 interface RegistrationForm {
   firstName: string;
@@ -34,6 +35,7 @@ function countryFlag(countryCode: CountryCode) {
 
 export default function Register() {
   const navigate = useNavigate();
+  const { register } = useApp();
   const [form, setForm] = useState<RegistrationForm>({
     firstName: '',
     surname: '',
@@ -103,7 +105,9 @@ export default function Register() {
       }
 
       localStorage.setItem('plymouth-user', JSON.stringify(user));
-      navigate('/tasks', { replace: true });
+      // Nieuwe gebruiker -> front-end context zetten en naar de welcome/onboarding
+      register(`${form.firstName} ${form.surname}`.trim());
+      navigate('/welcome', { replace: true });
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'Registration failed.');
     } finally {

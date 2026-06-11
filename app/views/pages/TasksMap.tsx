@@ -19,12 +19,10 @@ function createPinIcon(color: string): L.DivIcon {
   });
 }
 
-interface TasksMapProps {
-  onOpenSidebar?: () => void;
-}
-
-export default function TasksMap({ onOpenSidebar }: TasksMapProps) {
+export default function TasksMap() {
   const navigate = useNavigate();
+  const { openSidebar, verification } = useApp();
+  const isVerified = verification === 'verified';
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstance = useRef<L.Map | null>(null);
 
@@ -89,15 +87,16 @@ export default function TasksMap({ onOpenSidebar }: TasksMapProps) {
   return (
     <div className="tm2-page">
       <nav className="tm2-nav">
-        <a href="/" className="tm2-logo-link"><Logo height={40} /></a>
-        <button className="tm2-user-btn" onClick={() => onOpenSidebar?.()} aria-label="Account">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none"
-               stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/>
-            <circle cx="12" cy="7" r="4"/>
-          </svg>
+        <a href="/tasks" className="tm2-logo-link"><Logo height={40} /></a>
+        <button className="ah-hamburger" onClick={openSidebar} aria-label="Open menu">
+          <span />
+          <span />
+          <span />
         </button>
       </nav>
+
+      {/* Verificatie-statusbalk (verdwijnt zodra geverifieerd) */}
+      <StatusBanner />
 
       <div className="tm2-map-wrap">
         <div ref={mapRef} className="tm2-map" />

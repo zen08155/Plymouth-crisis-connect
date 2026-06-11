@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import Logo from '../components/Logo';
+import { useApp } from '../context/AppContext';
 
 interface LoginResponse {
   user: {
@@ -14,6 +15,7 @@ interface LoginResponse {
 
 export default function Login() {
   const navigate = useNavigate();
+  const { login } = useApp();
   const location = useLocation();
   const registrationMessage = (
     location.state as { registrationMessage?: string } | null
@@ -23,6 +25,12 @@ export default function Login() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
+
+  // Social-login knoppen (geen backend): zet alleen de front-end context
+  function handleLogin() {
+    login();
+    navigate('/tasks');
+  }
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -46,6 +54,8 @@ export default function Login() {
 
       const { user } = payload as LoginResponse;
       localStorage.setItem('plymouth-user', JSON.stringify(user));
+      // Sync front-end context (rol/verificatie/statusbalk)
+      login(user.role === 'admin');
       navigate('/tasks', { replace: true });
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'Unable to log in.');
@@ -56,7 +66,7 @@ export default function Login() {
 
   return (
     <div className="login-page">
-      <div className="login-logo"><Logo height={38} /></div>
+      <div className="login-logo"><Logo height={48} /></div>
 
       <div className="login-card">
 
@@ -125,7 +135,7 @@ export default function Login() {
               </form>
             )}
 
-            <button className="login-btn login-btn-white login-btn-icon">
+            <button className="login-btn login-btn-white login-btn-icon" onClick={handleLogin}>
               <span className="login-icon-wrap">
                 <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true">
                   <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
@@ -137,7 +147,7 @@ export default function Login() {
               Log in with Google account
             </button>
 
-            <button className="login-btn login-btn-white login-btn-icon">
+            <button className="login-btn login-btn-white login-btn-icon" onClick={handleLogin}>
               <span className="login-icon-wrap">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="#1877F2" aria-hidden="true">
                   <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
@@ -148,6 +158,15 @@ export default function Login() {
 
           </div>
         </section>
+
+        {/* NL: demo-knop om als admin in te loggen. Verwijder/zekeren zodra de
+            backend echte rollen levert. */}
+        <button
+          className="login-admin-link"
+          onClick={() => { login(true); navigate('/admin'); }}
+        >
+          Log in as admin (demo)
+        </button>
 
       </div>
     </div>

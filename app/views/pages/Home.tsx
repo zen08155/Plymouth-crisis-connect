@@ -1,4 +1,7 @@
 import React, { useState, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
+import Logo from '../components/Logo';
+import { useApp } from '../context/AppContext';
 
 interface Skill {
   id: number;
@@ -6,12 +9,14 @@ interface Skill {
 }
 
 const DEFAULT_SKILLS: Skill[] = [
-  { id: 1, label: 'First Aid Certified' },
-  { id: 2, label: 'Mental Health First Aid' },
-  { id: 3, label: 'Crisis Counsellor' },
+  { id: 1, label: '' },
+  { id: 2, label: '' },
+  { id: 3, label: '' },
 ];
 
 export default function Home() {
+  const navigate = useNavigate();
+  const { submitVerification } = useApp();
   const [skills]                        = useState<Skill[]>(DEFAULT_SKILLS);
   const [description, setDescription]   = useState('');
   const [fileName, setFileName]          = useState<string | null>(null);
@@ -22,8 +27,19 @@ export default function Home() {
     if (file) setFileName(file.name);
   }
 
+  // Onboarding klaar -> certificaten ingediend -> status 'onder review' -> naar app
+  function handleGetStarted() {
+    submitVerification();
+    navigate('/tasks');
+  }
+
   return (
     <div className="welcome-page">
+
+      {/* Logo-only onboarding header (geen marketing-nav) */}
+      <div className="welcome-topbar">
+        <Logo height={42} />
+      </div>
 
       {/* Header */}
       <div className="welcome-header">
@@ -88,7 +104,7 @@ export default function Home() {
       </div>
 
       {/* Submit */}
-      <button className="welcome-submit-btn">
+      <button className="welcome-submit-btn" onClick={handleGetStarted}>
         Get Started
       </button>
 
