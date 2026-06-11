@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import Nav from '../components/Nav';
+import AppHeader from '../components/AppHeader';
 import { getIncident, volunteerForIncident, type Incident } from '../api/incidents';
 
 export default function TaskDescription() {
@@ -31,7 +31,7 @@ export default function TaskDescription() {
 
   return (
     <div className="td-page">
-      <Nav />
+      <AppHeader showBack showLogo />
       <h1 className="td-title">{loading ? 'LOADING TASK' : incident?.title ?? 'TASK NOT FOUND'}</h1>
 
       <div className="td-card">

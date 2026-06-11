@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import Logo from '../components/Logo';
+import StatusBanner from '../components/StatusBanner';
+import { useApp } from '../context/AppContext';
 import { getIncidents, type Incident } from '../api/incidents';
 
 const PRIORITY_COLORS: Record<Incident['priority'], string> = {
@@ -11,6 +13,9 @@ const PRIORITY_COLORS: Record<Incident['priority'], string> = {
   high: '#f59e0b',
   critical: '#ef4444',
 };
+
+// NL: incidenten met hoge prioriteit vereisen verificatie (skills/certificaten)
+const REQUIRES_VERIFICATION: Incident['priority'][] = ['high', 'critical'];
 
 function createPinIcon(color: string): L.DivIcon {
   return L.divIcon({
@@ -26,17 +31,19 @@ function createPinIcon(color: string): L.DivIcon {
   });
 }
 
-interface TasksMapProps {
-  onOpenSidebar?: () => void;
-}
-
-export default function TasksMap({ onOpenSidebar }: TasksMapProps) {
+export default function TasksMap() {
   const navigate = useNavigate();
+  const { openSidebar, verification } = useApp();
+  const isVerified = verification === 'verified';
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstance = useRef<L.Map | null>(null);
 
   const [incidents, setIncidents] = useState<Incident[]>([]);
   const [selectedTypes, setSelectedTypes] = useState<Set<string>>(new Set());
+
+  // NL: een incident is vergrendeld als het verificatie vereist en de gebruiker niet geverifieerd is
+  const isLocked = (incident: Incident) =>
+    REQUIRES_VERIFICATION.includes(incident.priority) && !isVerified;
 
   const incidentTypes = Array.from(new Set(incidents.map(incident => incident.type)));
   const visibleIncidents = selectedTypes.size === 0
@@ -102,15 +109,16 @@ export default function TasksMap({ onOpenSidebar }: TasksMapProps) {
   return (
     <div className="tm2-page">
       <nav className="tm2-nav">
-        <a href="/" className="tm2-logo-link"><Logo height={40} /></a>
-        <button className="tm2-user-btn" onClick={() => onOpenSidebar?.()} aria-label="Account">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none"
-               stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/>
-            <circle cx="12" cy="7" r="4"/>
-          </svg>
+        <a href="/tasks" className="tm2-logo-link"><Logo height={40} /></a>
+        <button className="ah-hamburger" onClick={openSidebar} aria-label="Open menu">
+          <span />
+          <span />
+          <span />
         </button>
       </nav>
+
+      {/* Verificatie-statusbalk (verdwijnt zodra geverifieerd) */}
+      <StatusBanner />
 
       <div className="tm2-map-wrap">
         <div ref={mapRef} className="tm2-map" />
@@ -124,16 +132,27 @@ export default function TasksMap({ onOpenSidebar }: TasksMapProps) {
             <button className="tm2-add-btn" aria-label="Add task">+</button>
           </div>
           <ul className="tm2-task-list">
-            {visibleIncidents.map(incident => (
-              <li
-                key={incident.id}
-                className="tm2-task-item"
-                onClick={() => navigate(`/task-description/${incident.id}`)}
-              >
-                <span className="tm2-dot" style={{ background: PRIORITY_COLORS[incident.priority] }} />
-                <span className="tm2-task-title">{incident.title}</span>
-              </li>
-            ))}
+            {visibleIncidents.map(incident => {
+              const locked = isLocked(incident);
+              return (
+                <li
+                  key={incident.id}
+                  className={`tm2-task-item ${locked ? 'tm2-task-item--locked' : ''}`}
+                  onClick={() => { if (!locked) navigate(`/task-description/${incident.id}`); }}
+                  title={locked ? 'Verificatie vereist voor deze taak' : undefined}
+                >
+                  <span className="tm2-dot" style={{ background: PRIORITY_COLORS[incident.priority] }} />
+                  <span className="tm2-task-title">{incident.title}</span>
+                  {locked && (
+                    <svg className="tm2-lock" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                         stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <rect x="3" y="11" width="18" height="11" rx="2"/>
+                      <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                    </svg>
+                  )}
+                </li>
+              );
+            })}
           </ul>
         </div>
 

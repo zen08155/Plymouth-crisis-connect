@@ -2,8 +2,9 @@ import bcrypt
 from app.database.database_connection import Database
 from app.models.user_data import UserData
 from app.models.user_skills import UserSkills
-from datetime import date
+from datetime import date, datetime
 from typing import Optional
+
 
 class UserAccount:
     """User repository, includes create_account and log_in (which should be login tbh but ok)
@@ -18,7 +19,7 @@ class UserAccount:
         """
         pw = password.encode()
         salt = bcrypt.gensalt()
-        hashed_pw = bcrypt.hashpw(pw, salt) 
+        hashed_pw = bcrypt.hashpw(pw, salt).decode("utf-8")
 
         user = UserData(hashed_pw, firstname, surname, email, phone_nr, birthday, role, status)
 
@@ -26,21 +27,14 @@ class UserAccount:
                  VALUES(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)"""
 
         try:
-            conn = Database.get_connection()
-            cursor = conn.cursor()
-            cursor.execute(sql, (user.password, user.name, user.surname, user.email, user.role, user.status, user.phone, user.birthday, user.created_at, user.updated_at, user.is_active, user.avg_response_time, user.push_notifications_enabled))
-            conn.commit()
+            Database.execute(sql, (user.password, user.name, user.surname, user.email, user.role, user.status, user.phone, user.birthday, user.created_at, user.updated_at, user.is_active, user.avg_response_time, user.push_notifications_enabled))
             return True
             
         except Exception as e:
             print(e) 
-            conn.rollback()
             return False   
         
-        finally:
-            if conn: conn.close()
-
-    def log_in(self, email : str, password : str) -> Optional[UserData] :
+    def log_in(self, email : str, password : str) -> UserData | None :
         """Log in user using email and password
 
         Args:
@@ -50,53 +44,51 @@ class UserAccount:
         Returns:
             Optional[User]: Returns an User object if login succeeds, otherwise None.
         """
-        sql_pw = f"SELECT password FROM users WHERE email = %s"
-        sql_id = f"SELECT * FROM users WHERE email = %s"
+        sql = "SELECT * FROM users WHERE email = %s"
+        cursor = None
 
         try:
             conn = Database.get_connection()
             cursor = conn.cursor(dictionary=True)
-            cursor.execute(sql_pw, (email,))
+            cursor.execute(sql, (email,))
 
             row = cursor.fetchone()
 
             if row is None:
                 return None
             
-            pw_byte = row["password"].encode()
+            stored_password = row["password"]
+            if isinstance(stored_password, str):
+                stored_password = stored_password.encode()
 
-            if bcrypt.checkpw(password.encode(), pw_byte) :
-                cursor.execute(sql_id, (email,))
-                row = cursor.fetchone()
-                self.__user_id = row["userId"]
-                
-                return UserData(hashed_password=row["password"],
-                            name=row["name"],
-                            surname=row["surname"],
-                            email=row["email"],
-                            phone_number=row["phoneNumber"],
-                            birthday=row["birthday"],
-                            role=row["role"],
-                            created_at=row["createdAt"],
-                            updated_at=row["createdAt"],
-                            is_active=row["isActive"],
-                            avg_response_time=row["avgResponseTimeMins"],
-                            push_notifications=row["pushNotifications"],
-                            id=row["userId"],
-                            status=row["status"]
-                            )
-            else:
-                print("User not found.")
+            if not bcrypt.checkpw(password.encode(), stored_password):
                 return None
-                
+            
+            return UserData(hashed_password=row["password"],
+                        name=row["name"],
+                        surname=row["surname"],
+                        email=row["email"],
+                        phone_number=row["phoneNumber"],
+                        birthday=row["birthday"],
+                        role=row["role"],
+                        created_at=row["createdAt"],
+                        updated_at=row["updatedAt"],
+                        is_active=row["isActive"],
+                        avg_response_time=row["avgResponseTimeMins"],
+                        push_notifications=row["pushNotifications"],
+                        id=row["userId"],
+                        status=row["status"]
+                        )
+           
         except Exception as e:
             print("error: " + str(e))
             return None
         
         finally:
-            if conn: conn.close()
+            if cursor:
+                cursor.close()
 
-    def set_skills(self, skills: UserSkills) -> None:
+    def set_skills(self, user_id : int, skills: UserSkills) -> bool:
         """Sets skills for User in database, also connects the skills and user in volunteerSkills.
 
         Args:
@@ -104,53 +96,74 @@ class UserAccount:
 
         Raises:
             ValueError: throws exception when the user_id is invalid.
+
+        Returns:
+            bool: on success/failure
         """
-        sql = "INSERT INTO skills (title, description, skillType, skillDescription, certificateName, expirationDateCertificate, courseTakenAt) VALUES (%s, %s, %s, %s, %s, %s %s, %s)"
+        sql = "INSERT INTO skills (title, description, skillType, skillDescription, proofOfCertificate, certificateName, expirationDateCertificate, courseTakenAt) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)"
         sql_volunteerskill = "INSERT INTO volunteerSkills(skillId, userId) VALUES (%s, %s)"
 
-        if self.__user_id == -1:
+        if user_id is None:
             raise ValueError("User id is not set!")
         
         try:
-            conn = Database.get_connection()
-            cursor = conn.cursor()
-            cursor.execute(sql, (skills.title, skills.description, skills.skill_type, skills.skill_description, skills.proof_of_certificate, skills.name_of_certificate, skills.expiration_date_certificate, skills.course_taken_at))
-            
+            #insert new skill
+            cursor = Database.execute(sql, (skills.title, skills.description, skills.skill_type, skills.skill_description, skills.proof_of_certificate, skills.name_of_certificate, skills.expiration_date_certificate, skills.course_taken_at))
+
+            #use the prev generated id to link to user
             skill_id = cursor.lastrowid
-            cursor.execute(sql_volunteerskill, (self.__user_id, skill_id))
-            conn.commit()
+            Database.execute(sql_volunteerskill, (skill_id, user_id))
+            return True
 
         except Exception as e:
             print("error: " + str(e))
-
-        finally: 
-            conn.close()
-
-    def volunteer_for_team(self, user_id : int, team_id : int) -> None:
-        """User assigns themselves to a (main/general) team of an incident, to more specialized teams the coordinator will have to assign them
+            return False
+        
+    def volunteer_for(self, user_id : int, incident_id : int) -> bool:
+        """Adds the volunteer to the incident and the main-team of said incident
 
         Args:
-            team_id (int): team id
+            user_id (int): id of the user
+            incident_id (int): id of incident to join 
 
         Raises:
-            ValueError: throws exception if the user_id is invalid
+            ValueError: incident with the id cannot be found.
+
+        Returns:
+            bool: on success/failure
         """
-        if user_id == -1:
-            raise ValueError("User id is not set")
-        
-        sql = "INSERT INTO volunteeringTeams (teamId, userId) VALUES (%s, %s)"
-        
-        try:
+        sql = "INSERT INTO incidentVolunteers(incidentId, userId, joinedAt) VALUES (%s, %s, %s)"
+        sql_find_team = "SELECT teamId FROM team WHERE incidentId = %s AND name LIKE 'MAIN%%' LIMIT 1"
+        sql_team = "INSERT INTO volunteeringTeams (teamId, userId) VALUES (%s, %s)"
+
+        try: 
             conn = Database.get_connection()
             cursor = conn.cursor()
-            cursor.execute(sql, (team_id, user_id))
+
+            #adds user to incidentVolunteers
+            cursor.execute(sql, (incident_id, user_id, datetime.now()))
+
+            #find team_id
+            cursor.execute(sql_find_team, (incident_id,))
+            result = cursor.fetchone()
+            
+            if result is None: 
+                raise ValueError(f"No team found for incident {incident_id}")
+            
+            #insert volunteer into main-team of the incident
+            team_id = result[0]
+            cursor.execute(sql_team, (team_id, user_id))
+            conn.commit()
+
+            return True
 
         except Exception as e:
-            print("error: " + e)
+            print("error: " + str(e))
+            conn.rollback()
+            return False
 
         finally:
-            conn.close()
-        
+            if cursor: cursor.close()
 #TESTING
 # usr =  UserAccount()
 # print(usr.create_account("jenita2", "z", "pw", "yay@", "123", date(2000, 1, 31))) 
@@ -160,5 +173,3 @@ class UserAccount:
 
         
         
-
-

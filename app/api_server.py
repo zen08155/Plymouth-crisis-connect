@@ -10,7 +10,6 @@ from database.fake_database import database
 
 ROOT_DIR = Path(__file__).resolve().parent.parent
 DIST_DIR = ROOT_DIR / "dist"
-DEFAULT_PORT = 5000
 
 
 def normalize_priority(priority):
@@ -67,6 +66,16 @@ def find_user(user_id):
     )
 
 
+def public_user(user):
+    return {
+        "id": user["User_id"],
+        "firstName": user["Name"],
+        "surname": user["Surname"],
+        "email": user["Email"],
+        "role": user["Role"],
+    }
+
+
 class PlymouthApiHandler(BaseHTTPRequestHandler):
     def do_GET(self):
         path = urlparse(self.path).path
@@ -95,6 +104,59 @@ class PlymouthApiHandler(BaseHTTPRequestHandler):
 
     def do_POST(self):
         path = urlparse(self.path).path
+
+        if path == "/api/login":
+            payload = self.read_json()
+            email = str(payload.get("email", "")).strip().lower()
+            password = str(payload.get("password", ""))
+            user = next(
+                (
+                    candidate
+                    for candidate in database["Users"]
+                    if candidate["Email"].lower() == email
+                ),
+                None,
+            )
+
+            if user is None or user["Password"] != password:
+                self.send_json({"detail": "Invalid email or password."}, status=401)
+                return
+
+            self.send_json({"user": public_user(user)})
+            return
+
+        if path == "/api/register":
+            payload = self.read_json()
+            email = str(payload.get("email", "")).strip().lower()
+
+            if any(user["Email"].lower() == email for user in database["Users"]):
+                self.send_json(
+                    {"detail": "An account with that email already exists."},
+                    status=409,
+                )
+                return
+
+            user = {
+                "User_id": max(user["User_id"] for user in database["Users"]) + 1,
+                "Password": str(payload.get("password", "")),
+                "Name": str(payload.get("firstname", "")).strip(),
+                "Surname": str(payload.get("surname", "")).strip(),
+                "Email": email,
+                "Role": "volunteer",
+                "Phone_number": str(payload.get("phone_nr", "")).strip(),
+                "DOB": str(payload.get("birthday", "")),
+                "Created_At": None,
+                "Updated_At": None,
+                "Is_Active": True,
+                "On_Call": False,
+                "Avg_Response_Time_Mins": 0,
+            }
+            database["Users"].append(user)
+            self.send_json(
+                {"success": True, "message": "Account created", "user": public_user(user)},
+                status=201,
+            )
+            return
 
         if path.startswith("/incidents/") and path.endswith("/join"):
             incident_id = self.parse_id(path.removesuffix("/join"), "/incidents/")
@@ -198,9 +260,10 @@ class PlymouthApiHandler(BaseHTTPRequestHandler):
 
 
 def run():
-    port = int(os.getenv("PORT", DEFAULT_PORT))
+    port = int(os.getenv("PORT", "0"))
     server = ThreadingHTTPServer(("0.0.0.0", port), PlymouthApiHandler)
-    print(f"Plymouth API server running at http://localhost:{port}")
+    actual_port = server.server_address[1]
+    print(f"Plymouth API server running at http://localhost:{actual_port}")
     server.serve_forever()
 
 

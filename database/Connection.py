@@ -40,4 +40,4 @@ database = Database(
     password="root"
 )
 
-connection = database.get_connection()
+connection = database.get_connection()  

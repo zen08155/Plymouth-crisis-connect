@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useApp } from '../context/AppContext';
 
 interface Message {
   id: number;
@@ -12,6 +13,7 @@ const INITIAL_MESSAGES: Message[] = [];
 
 export default function Chat() {
   const navigate = useNavigate();
+  const { openSidebar } = useApp();
   const [messages, setMessages] = useState<Message[]>(INITIAL_MESSAGES);
   const [draft, setDraft] = useState('');
 
@@ -37,6 +39,11 @@ export default function Chat() {
           </svg>
         </button>
         <div className="pf-tab">CHAT</div>
+        <button className="ah-hamburger" onClick={openSidebar} aria-label="Open menu">
+          <span />
+          <span />
+          <span />
+        </button>
       </div>
 
       {/* Messages */}
