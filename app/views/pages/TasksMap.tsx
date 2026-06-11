@@ -3,14 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import Logo from '../components/Logo';
-import { getIncidents, type Incident } from '../api/incidents';
-
-const PRIORITY_COLORS: Record<Incident['priority'], string> = {
-  low: '#22c55e',
-  normal: '#3b82f6',
-  high: '#f59e0b',
-  critical: '#ef4444',
-};
+import { getIncidents, getIncidentTypeColor, type Incident } from '../api/incidents';
 
 function createPinIcon(color: string): L.DivIcon {
   return L.divIcon({
@@ -37,6 +30,7 @@ export default function TasksMap({ onOpenSidebar }: TasksMapProps) {
 
   const [incidents, setIncidents] = useState<Incident[]>([]);
   const [selectedTypes, setSelectedTypes] = useState<Set<string>>(new Set());
+  const [selectedIncident, setSelectedIncident] = useState<Incident | null>(null);
 
   const incidentTypes = Array.from(new Set(incidents.map(incident => incident.type)));
   const visibleIncidents = selectedTypes.size === 0
@@ -44,6 +38,7 @@ export default function TasksMap({ onOpenSidebar }: TasksMapProps) {
     : incidents.filter(incident => selectedTypes.has(incident.type));
 
   function toggleType(type: string): void {
+    setSelectedIncident(null);
     setSelectedTypes(prev => {
       const next = new Set(prev);
       next.has(type) ? next.delete(type) : next.add(type);
@@ -67,6 +62,7 @@ export default function TasksMap({ onOpenSidebar }: TasksMapProps) {
       attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
     }).addTo(map);
 
+    map.on('click', () => setSelectedIncident(null));
     mapInstance.current = map;
     return () => {
       map.remove();
@@ -83,21 +79,12 @@ export default function TasksMap({ onOpenSidebar }: TasksMapProps) {
     });
 
     visibleIncidents.forEach(incident => {
-      const color = PRIORITY_COLORS[incident.priority];
+      const color = getIncidentTypeColor(incident.type);
       const marker = L.marker([incident.latitude, incident.longitude], { icon: createPinIcon(color) });
-
-      marker.bindPopup(`
-        <div style="font-family:sans-serif;min-width:160px;font-size:13px">
-          <span style="display:inline-block;width:9px;height:9px;border-radius:50%;
-            background:${color};margin-right:5px;vertical-align:middle"></span>
-          <strong>${incident.type} - ${incident.priority}</strong>
-          <p style="margin:5px 0 0;line-height:1.4">${incident.title}</p>
-        </div>`);
-
-      marker.on('click', () => navigate(`/task-description/${incident.id}`));
+      marker.on('click', () => setSelectedIncident(incident));
       marker.addTo(map);
     });
-  }, [visibleIncidents, navigate]);
+  }, [visibleIncidents]);
 
   return (
     <div className="tm2-page">
@@ -114,6 +101,35 @@ export default function TasksMap({ onOpenSidebar }: TasksMapProps) {
 
       <div className="tm2-map-wrap">
         <div ref={mapRef} className="tm2-map" />
+        {selectedIncident && (
+          <aside
+            className="tm2-map-preview"
+            style={{ '--incident-color': getIncidentTypeColor(selectedIncident.type) } as React.CSSProperties}
+          >
+            <button
+              type="button"
+              className="tm2-preview-close"
+              onClick={() => setSelectedIncident(null)}
+              aria-label="Close incident preview"
+            >
+              ×
+            </button>
+            <div className="tm2-preview-meta">
+              <span className="tm2-preview-type">{selectedIncident.type}</span>
+              <span className="tm2-preview-priority">{selectedIncident.priority}</span>
+            </div>
+            <h2>{selectedIncident.title}</h2>
+            <p>{selectedIncident.description}</p>
+            <button
+              type="button"
+              className="tm2-preview-action"
+              onClick={() => navigate(`/task-description/${selectedIncident.id}`)}
+            >
+              View full task
+              <span aria-hidden="true">→</span>
+            </button>
+          </aside>
+        )}
         <div className="tm2-scroll-hint">...</div>
       </div>
 
@@ -130,7 +146,7 @@ export default function TasksMap({ onOpenSidebar }: TasksMapProps) {
                 className="tm2-task-item"
                 onClick={() => navigate(`/task-description/${incident.id}`)}
               >
-                <span className="tm2-dot" style={{ background: PRIORITY_COLORS[incident.priority] }} />
+                <span className="tm2-dot" style={{ background: getIncidentTypeColor(incident.type) }} />
                 <span className="tm2-task-title">{incident.title}</span>
               </li>
             ))}
@@ -140,7 +156,7 @@ export default function TasksMap({ onOpenSidebar }: TasksMapProps) {
         <div className="tm2-filter-panel">
           <h3 className="tm2-filter-title">Filter by type</h3>
           <ul className="tm2-filter-list">
-            {incidentTypes.map((type, index) => (
+            {incidentTypes.map(type => (
               <li key={type} className="tm2-filter-item">
                 <label>
                   <input
@@ -148,7 +164,7 @@ export default function TasksMap({ onOpenSidebar }: TasksMapProps) {
                     checked={selectedTypes.has(type)}
                     onChange={() => toggleType(type)}
                   />
-                  <span className="tm2-filter-dot" style={{ background: Object.values(PRIORITY_COLORS)[index % 4] }} />
+                  <span className="tm2-filter-dot" style={{ background: getIncidentTypeColor(type) }} />
                   {type}
                 </label>
               </li>

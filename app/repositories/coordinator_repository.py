@@ -7,6 +7,57 @@ from app.database.database_connection import Database
 from datetime import datetime
 
 class CoordinatorRepository:
+    def list_active_incidents(self) -> list[dict]:
+        sql = """
+            SELECT incidentId, title, description, type, latitude, longitude,
+                   priority, status, createdAt, createdBy, endedAt, endedBy
+            FROM incidents
+            WHERE endedAt IS NULL AND status = TRUE
+            ORDER BY createdAt DESC
+        """
+        conn = None
+        cursor = None
+
+        try:
+            conn = Database.get_connection()
+            cursor = conn.cursor(dictionary=True)
+            cursor.execute(sql)
+            incidents = cursor.fetchall()
+            conn.commit()
+            return incidents
+        except Exception:
+            if conn:
+                conn.rollback()
+            raise
+        finally:
+            if cursor:
+                cursor.close()
+
+    def get_incident(self, incident_id: int) -> dict | None:
+        sql = """
+            SELECT incidentId, title, description, type, latitude, longitude,
+                   priority, status, createdAt, createdBy, endedAt, endedBy
+            FROM incidents
+            WHERE incidentId = %s
+        """
+        conn = None
+        cursor = None
+
+        try:
+            conn = Database.get_connection()
+            cursor = conn.cursor(dictionary=True)
+            cursor.execute(sql, (incident_id,))
+            incident = cursor.fetchone()
+            conn.commit()
+            return incident
+        except Exception:
+            if conn:
+                conn.rollback()
+            raise
+        finally:
+            if cursor:
+                cursor.close()
+
     def create_incident(self, incident : Incident, coordinator_id : int) -> bool:
         """Creates an incident and immediatelly sends out a notification using the created incident
 
@@ -175,23 +226,27 @@ class CoordinatorRepository:
 
         return latitude, longitude
 
-    def update_priority(self, incident_id : int, priority : str) -> None:
+    def update_priority(self, incident_id : int, priority : str) -> bool:
         sql = "UPDATE incidents SET priority = %s WHERE incidentId = %s"
         try:
-            Database.execute(sql, (priority, incident_id))
+            cursor = Database.execute(sql, (priority, incident_id))
+            return cursor.rowcount > 0
 
         except Exception as e:
             print("error:" + str(e))
+            return False
 
 
-    def update_description(self, incident_id : int, description : str) -> None:
-        sql = "Uodate incidents SET description = %s WHERE incidentId = %s"
+    def update_description(self, incident_id : int, description : str) -> bool:
+        sql = "UPDATE incidents SET description = %s WHERE incidentId = %s"
 
         try:
-            Database.execute(sql, (description, incident_id))
+            cursor = Database.execute(sql, (description, incident_id))
+            return cursor.rowcount > 0
 
         except Exception as e:
             print("error: " + str(e))
+            return False
 
     def create_task(self, task : Task) ->bool:
         """Creates a task and assign to team, inserts in database

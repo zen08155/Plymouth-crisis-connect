@@ -11,48 +11,25 @@ export interface Incident {
 
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/$/, '');
 
-const fallbackIncidents: Incident[] = [
-  {
-    id: 101,
-    title: 'Flood response volunteers needed in Plymouth Barbican',
-    description: 'Help residents affected by local flooding with supplies, check-ins, and safe route guidance.',
-    type: 'Flood',
-    latitude: 50.3686,
-    longitude: -4.1342,
-    priority: 'critical',
-    status: 'open',
-  },
-  {
-    id: 102,
-    title: 'Community food support at Devonport aid point',
-    description: 'Support food parcel sorting and distribution for families and rough sleepers near Devonport.',
-    type: 'Relief',
-    latitude: 50.3781,
-    longitude: -4.1714,
-    priority: 'high',
-    status: 'open',
-  },
-  {
-    id: 103,
-    title: 'Storm damage reporting around Mutley Plain',
-    description: 'Check reported storm damage, collect photos, and share updates with the coordinator team.',
-    type: 'Storm',
-    latitude: 50.3842,
-    longitude: -4.1359,
-    priority: 'normal',
-    status: 'open',
-  },
-  {
-    id: 104,
-    title: 'Shelter support volunteers at city centre',
-    description: 'Assist the temporary shelter team with welcome desk support, supplies, and resident guidance.',
-    type: 'Shelter',
-    latitude: 50.3715,
-    longitude: -4.1427,
-    priority: 'low',
-    status: 'open',
-  },
-];
+const TYPE_COLORS: Record<string, string> = {
+  flood: '#ef4444',
+  relief: '#f59e0b',
+  shelter: '#22c55e',
+  storm: '#3b82f6',
+};
+
+export function getIncidentTypeColor(type: string): string {
+  const normalizedType = type.trim().toLowerCase();
+  if (TYPE_COLORS[normalizedType]) return TYPE_COLORS[normalizedType];
+
+  const fallbackColors = ['#2EC4B6', '#a855f7', '#ec4899', '#14b8a6', '#eab308'];
+  const colorIndex = Array.from(normalizedType).reduce(
+    (total, character) => total + character.charCodeAt(0),
+    0,
+  ) % fallbackColors.length;
+
+  return fallbackColors[colorIndex];
+}
 
 function normalizePriority(priority: string): Incident['priority'] {
   const value = priority.toLowerCase();
@@ -97,7 +74,7 @@ export async function getIncidents(): Promise<Incident[]> {
     const data = await request<unknown[]>('/incidents');
     return data.map(item => normalizeIncident(item as Record<string, unknown>));
   } catch {
-    return fallbackIncidents;
+    return [];
   }
 }
 
@@ -106,11 +83,11 @@ export async function getIncident(id: number): Promise<Incident | null> {
     const data = await request<Record<string, unknown>>(`/incidents/${id}`);
     return normalizeIncident(data);
   } catch {
-    return fallbackIncidents.find(incident => incident.id === id) ?? null;
+    return null;
   }
 }
 
-export async function volunteerForIncident(incidentId: number, userId = 2): Promise<boolean> {
+export async function volunteerForIncident(incidentId: number, userId: number): Promise<boolean> {
   try {
     await request(`/incidents/${incidentId}/join`, {
       method: 'POST',
@@ -118,6 +95,6 @@ export async function volunteerForIncident(incidentId: number, userId = 2): Prom
     });
     return true;
   } catch {
-    return true;
+    return false;
   }
 }
