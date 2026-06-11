@@ -134,6 +134,90 @@ class UserAccount:
             if conn:
                 conn.close()
 
+    def get_profile(self, user_id: int) -> dict | None:
+        conn = None
+        cursor = None
+        try:
+            conn = Database.get_connection()
+            cursor = conn.cursor(dictionary=True)
+            cursor.execute(
+                """
+                SELECT userId, name, surname, email, role, phoneNumber, birthday
+                FROM users
+                WHERE userId = %s AND isActive = TRUE
+                """,
+                (user_id,),
+            )
+            return cursor.fetchone()
+        finally:
+            if cursor:
+                cursor.close()
+            if conn:
+                conn.close()
+
+    def update_profile(
+        self,
+        user_id: int,
+        name: str,
+        surname: str,
+        email: str,
+        phone_number: str,
+        birthday: date,
+        password: str | None = None,
+    ) -> dict | None:
+        conn = None
+        cursor = None
+        try:
+            conn = Database.get_connection()
+            cursor = conn.cursor(dictionary=True)
+            cursor.execute(
+                "SELECT userId FROM users WHERE email = %s AND userId != %s",
+                (email, user_id),
+            )
+            if cursor.fetchone():
+                raise ValueError("email_in_use")
+
+            fields = [
+                "name = %s",
+                "surname = %s",
+                "email = %s",
+                "phoneNumber = %s",
+                "birthday = %s",
+                "updatedAt = %s",
+            ]
+            values = [name, surname, email, phone_number, birthday, datetime.now()]
+
+            if password:
+                fields.append("password = %s")
+                values.append(
+                    bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode("utf-8")
+                )
+
+            values.append(user_id)
+            cursor.execute(
+                f"""
+                UPDATE users
+                SET {", ".join(fields)}
+                WHERE userId = %s AND isActive = TRUE
+                """,
+                tuple(values),
+            )
+            if cursor.rowcount == 0:
+                conn.rollback()
+                return None
+
+            conn.commit()
+            return self.get_profile(user_id)
+        except Exception:
+            if conn:
+                conn.rollback()
+            raise
+        finally:
+            if cursor:
+                cursor.close()
+            if conn:
+                conn.close()
+
     def submit_certificate(
         self,
         user_id: int,

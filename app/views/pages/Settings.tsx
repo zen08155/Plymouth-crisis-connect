@@ -189,9 +189,6 @@ export default function Settings() {
             <span className="set-profile-dot">-</span>
             <span className="set-profile-role">Settings</span>
           </div>
-          <button className="set-message-btn" onClick={() => navigate('/chat')}>
-            Message
-          </button>
         </div>
 
         {canViewUsers && (

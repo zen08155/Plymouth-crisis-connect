@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import AppHeader from '../components/AppHeader';
 import { useToast } from '../context/ToastContext';
 
@@ -10,9 +10,30 @@ interface StoredUser {
   role?: string;
   birthday?: string;
   phone?: string;
+  token?: string;
 }
 
-function loadProfile() {
+interface ProfileForm {
+  name: string;
+  surname: string;
+  dob: string;
+  email: string;
+  phone: string;
+  role: string;
+  password: string;
+}
+
+interface ProfileResponse {
+  id: number;
+  firstName: string;
+  surname: string;
+  email: string;
+  role: string;
+  birthday: string;
+  phone: string;
+}
+
+function loadProfile(): ProfileForm {
   try {
     const user = JSON.parse(localStorage.getItem('plymouth-user') ?? 'null') as StoredUser | null;
 
@@ -34,26 +55,132 @@ export default function Profile() {
   const toast = useToast();
   const [form, setForm] = useState(loadProfile);
   const [saved, setSaved] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    const storedUser = JSON.parse(
+      localStorage.getItem('plymouth-user') ?? 'null'
+    ) as StoredUser | null;
+
+    if (!storedUser?.token) {
+      setError('Please log in with your Plymouth Crisis Connect account to view current profile data.');
+      setLoading(false);
+      return;
+    }
+
+    let cancelled = false;
+    fetch('/api/profile', {
+      headers: { Authorization: `Bearer ${storedUser.token}` },
+    })
+      .then(async response => {
+        const payload = await response.json().catch(() => null);
+        if (!response.ok) {
+          throw new Error(payload?.detail || 'Unable to load your profile.');
+        }
+        return payload as ProfileResponse;
+      })
+      .then(profile => {
+        if (cancelled) return;
+        setForm({
+          name: profile.firstName,
+          surname: profile.surname,
+          dob: profile.birthday,
+          email: profile.email,
+          phone: profile.phone,
+          role: profile.role,
+          password: '',
+        });
+        localStorage.setItem(
+          'plymouth-user',
+          JSON.stringify({ ...storedUser, ...profile, token: storedUser.token })
+        );
+      })
+      .catch(caught => {
+        if (cancelled) return;
+        setError(caught instanceof Error ? caught.message : 'Unable to load your profile.');
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
     setSaved(false);
+    setError('');
     setForm(prev => ({ ...prev, [e.target.name]: e.target.value }));
   }
 
-  function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    setError('');
+    setSaved(false);
 
-    const storedUser = JSON.parse(localStorage.getItem('plymouth-user') ?? '{}') as StoredUser;
-    localStorage.setItem('plymouth-user', JSON.stringify({
-      ...storedUser,
-      firstName: form.name.trim(),
-      surname: form.surname.trim(),
-      email: form.email.trim(),
-      birthday: form.dob,
-      phone: form.phone.trim(),
-    }));
-    setSaved(true);
-    toast.success('Profile changes saved.');
+    if (form.password && form.password.length < 8) {
+      const message = 'New password must be at least 8 characters.';
+      setError(message);
+      toast.error(message);
+      return;
+    }
+
+    const storedUser = JSON.parse(
+      localStorage.getItem('plymouth-user') ?? 'null'
+    ) as StoredUser | null;
+    if (!storedUser?.token) {
+      setError('Your session is missing. Please log in again.');
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const response = await fetch('/api/profile', {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${storedUser.token}`,
+        },
+        body: JSON.stringify({
+          firstName: form.name.trim(),
+          surname: form.surname.trim(),
+          email: form.email.trim().toLowerCase(),
+          phone: form.phone.trim(),
+          birthday: form.dob,
+          password: form.password || null,
+        }),
+      });
+      const payload = await response.json().catch(() => null);
+      if (!response.ok) {
+        throw new Error(payload?.detail || 'Unable to save your profile.');
+      }
+
+      const profile = payload as ProfileResponse;
+      setForm({
+        name: profile.firstName,
+        surname: profile.surname,
+        dob: profile.birthday,
+        email: profile.email,
+        phone: profile.phone,
+        role: profile.role,
+        password: '',
+      });
+      localStorage.setItem(
+        'plymouth-user',
+        JSON.stringify({ ...storedUser, ...profile, token: storedUser.token })
+      );
+      setSaved(true);
+      toast.success('Profile changes saved.');
+    } catch (caught) {
+      const message = caught instanceof Error ? caught.message : 'Unable to save your profile.';
+      setError(message);
+      toast.error(message);
+    } finally {
+      setSaving(false);
+    }
   }
 
   const displayName = [form.name, form.surname].filter(Boolean).join(' ') || 'Your profile';
@@ -96,24 +223,30 @@ export default function Profile() {
               {saved && <span className="pf-saved" role="status">Changes saved</span>}
             </div>
 
+            {loading && <p className="pf-status" role="status">Loading current profile...</p>}
+            {error && <p className="pf-error" role="alert">{error}</p>}
+
             <div className="pf-name-grid">
               <div className="pf-field">
                 <label className="pf-label" htmlFor="pf-name">First name</label>
                 <input id="pf-name" className="pf-input" type="text" name="name"
-                  value={form.name} onChange={handleChange} autoComplete="given-name" />
+                  value={form.name} onChange={handleChange} autoComplete="given-name"
+                  required disabled={loading || saving} />
               </div>
 
               <div className="pf-field">
                 <label className="pf-label" htmlFor="pf-surname">Surname</label>
                 <input id="pf-surname" className="pf-input" type="text" name="surname"
-                  value={form.surname} onChange={handleChange} autoComplete="family-name" />
+                  value={form.surname} onChange={handleChange} autoComplete="family-name"
+                  required disabled={loading || saving} />
               </div>
             </div>
 
             <div className="pf-field">
               <label className="pf-label" htmlFor="pf-email">Email address</label>
               <input id="pf-email" className="pf-input" type="email" name="email"
-                value={form.email} onChange={handleChange} autoComplete="email" />
+                value={form.email} onChange={handleChange} autoComplete="email"
+                required disabled={loading || saving} />
             </div>
 
             <div className="pf-contact-grid">
@@ -121,13 +254,14 @@ export default function Profile() {
                 <label className="pf-label" htmlFor="pf-phone">Phone number</label>
                 <input id="pf-phone" className="pf-input" type="tel" name="phone"
                   value={form.phone} onChange={handleChange} autoComplete="tel"
-                  placeholder="+44 7700 900123" />
+                  placeholder="+44 7700 900123" required disabled={loading || saving} />
               </div>
 
               <div className="pf-field">
                 <label className="pf-label" htmlFor="pf-dob">Date of birth</label>
                 <input id="pf-dob" className="pf-input" type="date" name="dob"
-                  value={form.dob} onChange={handleChange} autoComplete="bday" />
+                  value={form.dob} onChange={handleChange} autoComplete="bday"
+                  required disabled={loading || saving} />
               </div>
             </div>
 
@@ -137,12 +271,15 @@ export default function Profile() {
               <label className="pf-label" htmlFor="pf-password">New password</label>
               <input id="pf-password" className="pf-input" type="password" name="password"
                 value={form.password} onChange={handleChange} autoComplete="new-password"
-                placeholder="Leave blank to keep your current password" />
+                placeholder="Leave blank to keep your current password"
+                minLength={8} disabled={loading || saving} />
               <span className="pf-help">Use at least 8 characters when changing your password.</span>
             </div>
 
             <div className="pf-actions">
-              <button className="pf-save-btn" type="submit">Save changes</button>
+              <button className="pf-save-btn" type="submit" disabled={loading || saving}>
+                {saving ? 'Saving...' : 'Save changes'}
+              </button>
             </div>
           </form>
         </div>

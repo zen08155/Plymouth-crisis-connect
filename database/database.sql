@@ -88,18 +88,6 @@ CREATE TABLE IF NOT EXISTS tasks (
   FOREIGN KEY (teamId) REFERENCES team(teamId)
 );
 
--- Core: simulated team chat. Real-time/live chat delivery is an extension.
-CREATE TABLE IF NOT EXISTS message(
-  messageId INTEGER PRIMARY KEY AUTO_INCREMENT,
-  teamId INTEGER NOT NULL,
-  sentBy INTEGER NOT NULL,
-  content TEXT NOT NULL,
-  sendAt DATETIME NOT NULL,
-  editedAt DATETIME,
-  FOREIGN KEY (teamId) REFERENCES team(teamId),
-  FOREIGN KEY (sentBy) REFERENCES users(userId)
-);
-
 CREATE TABLE IF NOT EXISTS incidentNotification(
   notificationId INTEGER  PRIMARY KEY AUTO_INCREMENT,
   incidentId INTEGER NOT NULL,

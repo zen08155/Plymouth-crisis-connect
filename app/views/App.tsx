@@ -10,7 +10,6 @@ import TaskDescription from './pages/TaskDescription';
 import Profile from './pages/Profile';
 import Skills from './pages/Skills';
 import Settings from './pages/Settings';
-import Chat from './pages/Chat';
 import AdminDashboard from './pages/AdminDashboard';
 import CreateIncident from './pages/CreateIncident';
 import MyTasks from './pages/MyTasks';
@@ -90,7 +89,6 @@ export default function App() {
               element={<RequireAuth><RequireVolunteer><Skills /></RequireVolunteer></RequireAuth>}
             />
             <Route path="/settings" element={<RequireAuth><Settings /></RequireAuth>} />
-            <Route path="/chat" element={<RequireAuth><Chat /></RequireAuth>} />
             {/* Admin verificatie-dashboard */}
             <Route
               path="/admin"
