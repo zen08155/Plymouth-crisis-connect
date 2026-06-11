@@ -1,42 +1,22 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import Logo from '../components/Logo';
 import StatusBanner from '../components/StatusBanner';
 import { useApp } from '../context/AppContext';
+import { getIncidents, type Incident } from '../api/incidents';
 
-// ── Types ─────────────────────────────────────────────────────────────
-type Category = 'Mental Health' | 'Community' | 'Emergency' | 'Digital' | 'Youth Support';
-
-interface Task {
-  id: number;
-  title: string;
-  category: Category;
-  lat: number;
-  lng: number;
-  // NL: vereist skills/certificaten -> alleen voor geverifieerde gebruikers
-  requiresVerification?: boolean;
-}
-
-// ── Constants ─────────────────────────────────────────────────────────
-const CATEGORY_COLORS: Record<Category, string> = {
-  'Mental Health': '#22c55e',
-  'Community':     '#3b82f6',
-  'Emergency':     '#ef4444',
-  'Digital':       '#a855f7',
-  'Youth Support': '#ec4899',
+const PRIORITY_COLORS: Record<Incident['priority'], string> = {
+  low: '#22c55e',
+  normal: '#3b82f6',
+  high: '#f59e0b',
+  critical: '#ef4444',
 };
 
-const TASKS: Task[] = [
-  { id: 1, title: 'Crisis phone support — evening shift volunteers needed across Plymouth',    category: 'Mental Health', lat: 50.3763, lng: -4.1437, requiresVerification: true },
-  { id: 2, title: 'Community outreach — distribute mental health resource packs in PL1–PL4',  category: 'Community',     lat: 50.3801, lng: -4.1352 },
-  { id: 3, title: 'Drop-in centre support — assist staff at the Devonport wellbeing hub',     category: 'Digital',       lat: 50.3702, lng: -4.1612 },
-  { id: 4, title: 'Emergency response coordination training for new volunteers',               category: 'Emergency',     lat: 50.3851, lng: -4.1247, requiresVerification: true },
-  { id: 5, title: 'Youth mental health workshop — group facilitation support needed',         category: 'Youth Support', lat: 50.3650, lng: -4.1480 },
-];
+// NL: incidenten met hoge prioriteit vereisen verificatie (skills/certificaten)
+const REQUIRES_VERIFICATION: Incident['priority'][] = ['high', 'critical'];
 
-// ── Helpers ───────────────────────────────────────────────────────────
 function createPinIcon(color: string): L.DivIcon {
   return L.divIcon({
     className: '',
@@ -45,38 +25,43 @@ function createPinIcon(color: string): L.DivIcon {
                    fill="${color}" stroke="rgba(0,0,0,0.25)" stroke-width="1"/>
              <circle cx="14" cy="14" r="5" fill="white" opacity="0.9"/>
            </svg>`,
-    iconSize:   [28, 36],
+    iconSize: [28, 36],
     iconAnchor: [14, 36],
     popupAnchor: [0, -36],
   });
 }
 
-// ── Component ─────────────────────────────────────────────────────────
 export default function TasksMap() {
   const navigate = useNavigate();
   const { openSidebar, verification } = useApp();
   const isVerified = verification === 'verified';
-  const mapRef      = useRef<HTMLDivElement>(null);
+  const mapRef = useRef<HTMLDivElement>(null);
   const mapInstance = useRef<L.Map | null>(null);
 
-  // NL: een taak is vergrendeld als hij verificatie vereist en de gebruiker niet geverifieerd is
-  const isLocked = (task: Task) => !!task.requiresVerification && !isVerified;
+  const [incidents, setIncidents] = useState<Incident[]>([]);
+  const [selectedTypes, setSelectedTypes] = useState<Set<string>>(new Set());
 
-  const [selectedCategories, setSelectedCategories] = useState<Set<Category>>(new Set());
+  // NL: een incident is vergrendeld als het verificatie vereist en de gebruiker niet geverifieerd is
+  const isLocked = (incident: Incident) =>
+    REQUIRES_VERIFICATION.includes(incident.priority) && !isVerified;
 
-  const visibleTasks: Task[] = selectedCategories.size === 0
-    ? TASKS
-    : TASKS.filter(t => selectedCategories.has(t.category));
+  const incidentTypes = Array.from(new Set(incidents.map(incident => incident.type)));
+  const visibleIncidents = selectedTypes.size === 0
+    ? incidents
+    : incidents.filter(incident => selectedTypes.has(incident.type));
 
-  function toggleCategory(cat: Category): void {
-    setSelectedCategories(prev => {
+  function toggleType(type: string): void {
+    setSelectedTypes(prev => {
       const next = new Set(prev);
-      next.has(cat) ? next.delete(cat) : next.add(cat);
+      next.has(type) ? next.delete(type) : next.add(type);
       return next;
     });
   }
 
-  // Init map once
+  useEffect(() => {
+    getIncidents().then(setIncidents);
+  }, []);
+
   useEffect(() => {
     if (!mapRef.current || mapInstance.current) return;
 
@@ -90,36 +75,39 @@ export default function TasksMap() {
     }).addTo(map);
 
     mapInstance.current = map;
-    return () => { map.remove(); mapInstance.current = null; };
+    return () => {
+      map.remove();
+      mapInstance.current = null;
+    };
   }, []);
 
-  // Sync markers with filter
   useEffect(() => {
     const map = mapInstance.current;
     if (!map) return;
 
-    map.eachLayer(layer => { if (layer instanceof L.Marker) map.removeLayer(layer); });
+    map.eachLayer(layer => {
+      if (layer instanceof L.Marker) map.removeLayer(layer);
+    });
 
-    visibleTasks.forEach(task => {
-      const marker = L.marker([task.lat, task.lng], { icon: createPinIcon(CATEGORY_COLORS[task.category]) });
+    visibleIncidents.forEach(incident => {
+      const color = PRIORITY_COLORS[incident.priority];
+      const marker = L.marker([incident.latitude, incident.longitude], { icon: createPinIcon(color) });
 
       marker.bindPopup(`
         <div style="font-family:sans-serif;min-width:160px;font-size:13px">
           <span style="display:inline-block;width:9px;height:9px;border-radius:50%;
-            background:${CATEGORY_COLORS[task.category]};margin-right:5px;vertical-align:middle"></span>
-          <strong>${task.category}</strong>
-          <p style="margin:5px 0 0;line-height:1.4">${task.title}</p>
+            background:${color};margin-right:5px;vertical-align:middle"></span>
+          <strong>${incident.type} - ${incident.priority}</strong>
+          <p style="margin:5px 0 0;line-height:1.4">${incident.title}</p>
         </div>`);
 
-      marker.on('click', () => navigate('/task-description'));
+      marker.on('click', () => navigate(`/task-description/${incident.id}`));
       marker.addTo(map);
     });
-  }, [visibleTasks, navigate]);
+  }, [visibleIncidents, navigate]);
 
   return (
     <div className="tm2-page">
-
-      {/* ── Nav ── */}
       <nav className="tm2-nav">
         <a href="/tasks" className="tm2-logo-link"><Logo height={40} /></a>
         <button className="ah-hamburger" onClick={openSidebar} aria-label="Open menu">
@@ -132,33 +120,29 @@ export default function TasksMap() {
       {/* Verificatie-statusbalk (verdwijnt zodra geverifieerd) */}
       <StatusBanner />
 
-      {/* ── Map ── */}
       <div className="tm2-map-wrap">
         <div ref={mapRef} className="tm2-map" />
-        <div className="tm2-scroll-hint">···</div>
+        <div className="tm2-scroll-hint">...</div>
       </div>
 
-      {/* ── Bottom ── */}
       <div className="tm2-bottom">
-
-        {/* Task list */}
         <div className="tm2-tasks-panel">
           <div className="tm2-tasks-header">
             <h2>TASKS</h2>
             <button className="tm2-add-btn" aria-label="Add task">+</button>
           </div>
           <ul className="tm2-task-list">
-            {visibleTasks.map(task => {
-              const locked = isLocked(task);
+            {visibleIncidents.map(incident => {
+              const locked = isLocked(incident);
               return (
                 <li
-                  key={task.id}
+                  key={incident.id}
                   className={`tm2-task-item ${locked ? 'tm2-task-item--locked' : ''}`}
-                  onClick={() => { if (!locked) navigate('/task-description'); }}
+                  onClick={() => { if (!locked) navigate(`/task-description/${incident.id}`); }}
                   title={locked ? 'Verificatie vereist voor deze taak' : undefined}
                 >
-                  <span className="tm2-dot" style={{ background: CATEGORY_COLORS[task.category] }} />
-                  <span className="tm2-task-title">{task.title}</span>
+                  <span className="tm2-dot" style={{ background: PRIORITY_COLORS[incident.priority] }} />
+                  <span className="tm2-task-title">{incident.title}</span>
                   {locked && (
                     <svg className="tm2-lock" width="16" height="16" viewBox="0 0 24 24" fill="none"
                          stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -172,26 +156,24 @@ export default function TasksMap() {
           </ul>
         </div>
 
-        {/* Filter */}
         <div className="tm2-filter-panel">
-          <h3 className="tm2-filter-title">Filter by category</h3>
+          <h3 className="tm2-filter-title">Filter by type</h3>
           <ul className="tm2-filter-list">
-            {(Object.entries(CATEGORY_COLORS) as [Category, string][]).map(([cat, color]) => (
-              <li key={cat} className="tm2-filter-item">
+            {incidentTypes.map((type, index) => (
+              <li key={type} className="tm2-filter-item">
                 <label>
                   <input
                     type="checkbox"
-                    checked={selectedCategories.has(cat)}
-                    onChange={() => toggleCategory(cat)}
+                    checked={selectedTypes.has(type)}
+                    onChange={() => toggleType(type)}
                   />
-                  <span className="tm2-filter-dot" style={{ background: color }} />
-                  {cat}
+                  <span className="tm2-filter-dot" style={{ background: Object.values(PRIORITY_COLORS)[index % 4] }} />
+                  {type}
                 </label>
               </li>
             ))}
           </ul>
         </div>
-
       </div>
     </div>
   );

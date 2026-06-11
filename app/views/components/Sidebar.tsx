@@ -65,7 +65,7 @@ export default function Sidebar() {
   function handleLogout() {
     closeSidebar();
     logout();
-    navigate('/');
+    navigate('/login', { replace: true });
   }
 
   return (

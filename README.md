@@ -18,7 +18,7 @@ app/
     components/
 
 database/
-  firebase/     Firestore rules and indexes
+  database.sql  MySQL database schema
 ```
 
 This keeps the project close to a simple MVC layout:
@@ -26,7 +26,7 @@ This keeps the project close to a simple MVC layout:
 - `controllers/` is for backend request handling.
 - `models/` is for backend data objects.
 - `views/` is for the React frontend.
-- `database/firebase/` is for Firebase database configuration.
+- `database/database.sql` is for the MySQL database schema.
 
 ## Run locally
 
@@ -41,4 +41,4 @@ npm run dev
 docker compose up --build
 ```
 
-The website will be available at `http://localhost:5000`.
+The website will be available at `http://localhost:5174`.

@@ -1,16 +1,67 @@
-import React from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import Logo from '../components/Logo';
 import { useApp } from '../context/AppContext';
+
+interface LoginResponse {
+  user: {
+    id: number;
+    firstName: string;
+    surname: string;
+    email: string;
+    role: string;
+  };
+}
 
 export default function Login() {
   const navigate = useNavigate();
   const { login } = useApp();
+  const location = useLocation();
+  const registrationMessage = (
+    location.state as { registrationMessage?: string } | null
+  )?.registrationMessage;
+  const [showForm, setShowForm] = useState(Boolean(registrationMessage));
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+  const [submitting, setSubmitting] = useState(false);
 
-  // Bestaande gebruiker logt in -> direct naar de app (geen onboarding)
+  // Social-login knoppen (geen backend): zet alleen de front-end context
   function handleLogin() {
     login();
     navigate('/tasks');
+  }
+
+  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setError('');
+    setSubmitting(true);
+
+    try {
+      const response = await fetch('/api/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: email.trim().toLowerCase(),
+          password,
+        }),
+      });
+      const payload = await response.json().catch(() => null);
+
+      if (!response.ok) {
+        throw new Error(payload?.detail || 'Unable to log in. Please try again.');
+      }
+
+      const { user } = payload as LoginResponse;
+      localStorage.setItem('plymouth-user', JSON.stringify(user));
+      // Sync front-end context (rol/verificatie/statusbalk)
+      login(user.role === 'admin');
+      navigate('/tasks', { replace: true });
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : 'Unable to log in.');
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   return (
@@ -28,11 +79,61 @@ export default function Login() {
 
         <section className="login-section">
           <p className="login-heading">Already have an account? Log in</p>
-
           <div className="login-btn-group">
-            <button className="login-btn login-btn-yellow" onClick={handleLogin}>
+            <button
+              type="button"
+              className="login-btn login-btn-yellow"
+              onClick={() => {
+                setShowForm(previous => !previous);
+                setError('');
+              }}
+              aria-expanded={showForm}
+            >
               Log in with account
             </button>
+
+            {showForm && (
+              <form className="login-form" onSubmit={handleSubmit}>
+                {registrationMessage && (
+                  <p className="login-success" role="status">{registrationMessage}</p>
+                )}
+
+                <div className="login-form-group">
+                  <label htmlFor="login-email">Email address</label>
+                  <input
+                    id="login-email"
+                    type="email"
+                    autoComplete="email"
+                    value={email}
+                    onChange={event => setEmail(event.target.value)}
+                    required
+                    autoFocus
+                  />
+                </div>
+
+                <div className="login-form-group">
+                  <label htmlFor="login-password">Password</label>
+                  <input
+                    id="login-password"
+                    type="password"
+                    autoComplete="current-password"
+                    value={password}
+                    onChange={event => setPassword(event.target.value)}
+                    required
+                  />
+                </div>
+
+                {error && <p className="login-error" role="alert">{error}</p>}
+
+                <button
+                  type="submit"
+                  className="login-btn login-btn-yellow"
+                  disabled={submitting}
+                >
+                  {submitting ? 'Logging in...' : 'Log in'}
+                </button>
+              </form>
+            )}
 
             <button className="login-btn login-btn-white login-btn-icon" onClick={handleLogin}>
               <span className="login-icon-wrap">
@@ -55,17 +156,6 @@ export default function Login() {
               Log in with Facebook account
             </button>
 
-            <button
-              className="login-btn login-btn-white login-btn-icon"
-              onClick={() => navigate('/verify-phone')}
-            >
-              <span className="login-icon-wrap">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#1a1a1a" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                  <path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 9.81a19.79 19.79 0 01-3.07-8.67A2 2 0 012 .18h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L6.09 7.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/>
-                </svg>
-              </span>
-              Log in with phone number
-            </button>
           </div>
         </section>
 

@@ -85,7 +85,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         name,
       }),
 
-    logout: () => setState(DEFAULT_STATE),
+    logout: () => {
+      // Ook de backend-login sleutel (main) wissen
+      localStorage.removeItem('plymouth-user');
+      setState(DEFAULT_STATE);
+    },
 
     // Welcome-pagina ingevuld met certificaten -> status 'onder review'
     submitVerification: () =>
