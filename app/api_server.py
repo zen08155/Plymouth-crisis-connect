@@ -3,13 +3,20 @@ from pathlib import Path
 import json
 import mimetypes
 import os
-from urllib.parse import urlparse
+from urllib.parse import parse_qs, urlparse
 
 from database.fake_database import database
 
 
 ROOT_DIR = Path(__file__).resolve().parent.parent
 DIST_DIR = ROOT_DIR / "dist"
+
+DEFAULT_USER_SETTINGS = {
+    "pushNotifications": True,
+    "locationSharing": False,
+    "emergencyAlerts": True,
+    "availability": "available",
+}
 
 
 def normalize_priority(priority):
@@ -76,9 +83,45 @@ def public_user(user):
     }
 
 
+def find_user_settings(user_id):
+    return next(
+        (
+            settings
+            for settings in database.setdefault("User_settings", [])
+            if settings["User_id"] == user_id
+        ),
+        None,
+    )
+
+
+def public_settings(settings):
+    return {
+        "pushNotifications": bool(settings["Push_notifications"]),
+        "locationSharing": bool(settings["Location_sharing"]),
+        "emergencyAlerts": bool(settings["Emergency_alerts"]),
+        "availability": settings["Availability"],
+    }
+
+
+def normalized_settings(payload, existing=None):
+    current = public_settings(existing) if existing else DEFAULT_USER_SETTINGS
+    availability = str(payload.get("availability", current["availability"]))
+
+    if availability not in ("available", "busy", "offline"):
+        availability = "available"
+
+    return {
+        "pushNotifications": bool(payload.get("pushNotifications", current["pushNotifications"])),
+        "locationSharing": bool(payload.get("locationSharing", current["locationSharing"])),
+        "emergencyAlerts": bool(payload.get("emergencyAlerts", current["emergencyAlerts"])),
+        "availability": availability,
+    }
+
+
 class PlymouthApiHandler(BaseHTTPRequestHandler):
     def do_GET(self):
-        path = urlparse(self.path).path
+        parsed_url = urlparse(self.path)
+        path = parsed_url.path
 
         if path == "/incidents":
             incidents = [
@@ -98,6 +141,30 @@ class PlymouthApiHandler(BaseHTTPRequestHandler):
                 return
 
             self.send_json(serialize_incident(incident))
+            return
+
+        if path == "/api/settings":
+            query = parse_qs(parsed_url.query)
+            user_id = int(query.get("userId", ["2"])[0])
+            user = find_user(user_id)
+
+            if user is None:
+                self.send_json({"message": "User not found."}, status=404)
+                return
+
+            settings = find_user_settings(user_id)
+
+            if settings is None:
+                settings = {
+                    "User_id": user_id,
+                    "Push_notifications": user.get("Push_notifications", DEFAULT_USER_SETTINGS["pushNotifications"]),
+                    "Location_sharing": DEFAULT_USER_SETTINGS["locationSharing"],
+                    "Emergency_alerts": DEFAULT_USER_SETTINGS["emergencyAlerts"],
+                    "Availability": user.get("Status", DEFAULT_USER_SETTINGS["availability"]),
+                }
+                database.setdefault("User_settings", []).append(settings)
+
+            self.send_json({"settings": public_settings(settings)})
             return
 
         self.serve_static(path)
@@ -156,6 +223,36 @@ class PlymouthApiHandler(BaseHTTPRequestHandler):
                 {"success": True, "message": "Account created", "user": public_user(user)},
                 status=201,
             )
+            return
+
+        if path == "/api/settings":
+            payload = self.read_json()
+            user_id = int(payload.get("userId", 2))
+            user = find_user(user_id)
+
+            if user is None:
+                self.send_json({"message": "User not found."}, status=404)
+                return
+
+            existing = find_user_settings(user_id)
+            clean_settings = normalized_settings(payload, existing)
+
+            if existing is None:
+                existing = {"User_id": user_id}
+                database.setdefault("User_settings", []).append(existing)
+
+            existing.update(
+                {
+                    "Push_notifications": clean_settings["pushNotifications"],
+                    "Location_sharing": clean_settings["locationSharing"],
+                    "Emergency_alerts": clean_settings["emergencyAlerts"],
+                    "Availability": clean_settings["availability"],
+                }
+            )
+            user["Push_notifications"] = clean_settings["pushNotifications"]
+            user["Status"] = clean_settings["availability"]
+
+            self.send_json({"success": True, "settings": public_settings(existing)})
             return
 
         if path.startswith("/incidents/") and path.endswith("/join"):

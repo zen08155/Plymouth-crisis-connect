@@ -68,6 +68,29 @@ database = {
             "User_id": 2,
         }
     ],
+    "User_settings": [
+        {
+            "User_id": 1,
+            "Push_notifications": True,
+            "Location_sharing": False,
+            "Emergency_alerts": True,
+            "Availability": "available",
+        },
+        {
+            "User_id": 2,
+            "Push_notifications": True,
+            "Location_sharing": False,
+            "Emergency_alerts": True,
+            "Availability": "available",
+        },
+        {
+            "User_id": 3,
+            "Push_notifications": True,
+            "Location_sharing": False,
+            "Emergency_alerts": True,
+            "Availability": "busy",
+        },
+    ],
     "Incidents": [
         {
             "Incident_id": 101,
