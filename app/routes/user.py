@@ -1,11 +1,14 @@
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
-
 from app.repositories.user_account import UserAccount
 from datetime import date
 
 router = APIRouter()
 service = UserAccount()
+
+@router.get("/michael")
+def test():
+    return {"success" : True, "message" : "Heeee heeee"}
 
 #region register users
 @router.post("/register")
@@ -29,8 +32,7 @@ def register(
     )
 
     if not success:
-        return {"success": False, "message": "Registration failed"}
-
+        raise HTTPException(500, "User registration failed")
     return {"success": True, "message": "Account created"}
 
 #endregion
@@ -51,7 +53,7 @@ def login(data: LoginRequests):
 
 #region setskills
 class UserSkills(BaseModel):
-    id: int | None = None
+    user_id: int
     title: str
     description: str
     skill_type: str
@@ -64,23 +66,23 @@ class UserSkills(BaseModel):
 
 @router.post("/skills")
 def set_skills(skills: UserSkills):
-    success = service.set_skills(skills)
+    success = service.set_skills(skills.user_id, skills)
     if not success:
-        return {"success": False, "message": "Setting skills failed"}
+        raise HTTPException(500, "Setting skills failed")
     return {"success": True, "message" : "Skills set"}
 #endregion
 
 #region volunteer for team
 class Volunteer(BaseModel):
     user_id: int
-    team_id: int
+    incident_id: int
 
-@router.post("/team/volunteer")
+@router.post("/volunteer")
 def volunteer_for(data: Volunteer):
-    try:
-        service.volunteer_for_team(data.user_id, data.team_id)
-        return {"message": "Volunteered successfully"}
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+    success = service.volunteer_for(data.user_id, data.incident_id)
+    if not success: 
+        raise HTTPException(500, "Volunteering for incident failed")
+    return {"message": "Volunteered successfully"}
+
     
-#endregion'
+#endregion
