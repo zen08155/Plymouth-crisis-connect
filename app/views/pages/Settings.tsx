@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AppHeader from '../components/AppHeader';
+import { useApp } from '../context/AppContext';
 
 interface User {
   id: number;
@@ -73,10 +74,7 @@ function getStoredUserRole() {
 
 export default function Settings() {
   const navigate = useNavigate();
-<<<<<<< Updated upstream
-=======
   const { openSidebar, role } = useApp();
->>>>>>> Stashed changes
   const [usersExpanded, setUsersExpanded] = useState(false);
   const [settings, setSettings] = useState<SettingsState>(loadSettings);
   const [saveStatus, setSaveStatus] = useState('');
@@ -161,9 +159,7 @@ export default function Settings() {
 
   return (
     <div className="set-page">
-<<<<<<< Updated upstream
       <AppHeader title="Settings" />
-=======
       <div className="pf-header">
         <button className="pf-back-btn" onClick={() => navigate(-1)} aria-label="Go back">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
@@ -178,7 +174,6 @@ export default function Settings() {
           <span />
         </button>
       </div>
->>>>>>> Stashed changes
 
       <div className="set-body">
         <div className="set-profile-row">
