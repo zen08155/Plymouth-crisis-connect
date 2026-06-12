@@ -174,6 +174,49 @@ def update_profile(
     return serialize_profile(user)
 
 
+@router.get("/system-manager/volunteers")
+def system_manager_volunteers(authorization: str | None = Header(default=None)):
+    manager_id = authenticated_user_id(authorization)
+    if service.get_user_role(manager_id) != "system_manager":
+        raise HTTPException(403, "Only system managers can manage volunteer roles")
+
+    return [
+        {
+            "id": volunteer["userId"],
+            "name": volunteer["name"],
+            "surname": volunteer["surname"],
+            "email": volunteer["email"],
+            "status": volunteer["status"],
+        }
+        for volunteer in service.list_volunteers()
+    ]
+
+
+@router.patch("/system-manager/volunteers/{volunteer_id}/promote")
+def promote_volunteer(
+    volunteer_id: int,
+    authorization: str | None = Header(default=None),
+):
+    manager_id = authenticated_user_id(authorization)
+    if service.get_user_role(manager_id) != "system_manager":
+        raise HTTPException(403, "Only system managers can promote volunteers")
+    if manager_id == volunteer_id:
+        raise HTTPException(400, "System managers cannot change their own role")
+
+    volunteer = service.promote_volunteer(volunteer_id)
+    if volunteer is None:
+        raise HTTPException(409, "User is not an active volunteer")
+
+    return {
+        "success": True,
+        "message": (
+            f"{volunteer['name']} {volunteer['surname']} "
+            "has been promoted to coordinator"
+        ),
+        "user": serialize_profile(volunteer),
+    }
+
+
 CertificateMimeType = Literal[
     "application/pdf",
     "image/jpeg",

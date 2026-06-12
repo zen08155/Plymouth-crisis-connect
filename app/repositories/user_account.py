@@ -134,6 +134,59 @@ class UserAccount:
             if conn:
                 conn.close()
 
+    def list_volunteers(self) -> list[dict]:
+        conn = None
+        cursor = None
+        try:
+            conn = Database.get_connection()
+            cursor = conn.cursor(dictionary=True)
+            cursor.execute(
+                """
+                SELECT userId, name, surname, email, status
+                FROM users
+                WHERE role = 'volunteer' AND isActive = TRUE
+                ORDER BY surname, name, userId
+                """
+            )
+            return cursor.fetchall()
+        finally:
+            if cursor:
+                cursor.close()
+            if conn:
+                conn.close()
+
+    def promote_volunteer(self, user_id: int) -> dict | None:
+        conn = None
+        cursor = None
+        try:
+            conn = Database.get_connection()
+            cursor = conn.cursor()
+            cursor.execute(
+                """
+                UPDATE users
+                SET role = 'coordinator', updatedAt = %s
+                WHERE userId = %s
+                  AND role = 'volunteer'
+                  AND isActive = TRUE
+                """,
+                (datetime.now(), user_id),
+            )
+            if cursor.rowcount == 0:
+                conn.rollback()
+                return None
+
+            conn.commit()
+            return self.get_profile(user_id)
+        except Exception:
+            if conn:
+                conn.rollback()
+            raise
+        finally:
+            if cursor:
+                cursor.close()
+            if conn:
+                conn.close()
+
     def get_profile(self, user_id: int) -> dict | None:
         conn = None
         cursor = None

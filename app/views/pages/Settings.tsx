@@ -1,13 +1,4 @@
 import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import AppHeader from '../components/AppHeader';
-import { useApp } from '../context/AppContext';
-
-interface User {
-  id: number;
-  name: string;
-  role: string;
-}
 
 type ToggleKey =
   | 'pushNotifications'
@@ -20,13 +11,6 @@ interface SettingsState {
   emergencyAlerts: boolean;
   availability: 'available' | 'busy' | 'offline';
 }
-
-const MOCK_USERS: User[] = [
-  { id: 1, name: 'Coordinator', role: 'System manager' },
-  { id: 2, name: 'Volunteer team', role: 'Responder' },
-  { id: 3, name: 'Support desk', role: 'Service' },
-  { id: 4, name: 'Incident lead', role: 'Admin' },
-];
 
 const DEFAULT_SETTINGS: SettingsState = {
   pushNotifications: true,
@@ -63,23 +47,9 @@ function getCurrentUserId() {
   }
 }
 
-function getStoredUserRole() {
-  try {
-    const user = JSON.parse(window.localStorage.getItem('plymouth-user') ?? 'null');
-    return String(user?.role || '');
-  } catch {
-    return '';
-  }
-}
-
 export default function Settings() {
-  const navigate = useNavigate();
-  const { openSidebar, role } = useApp();
-  const [usersExpanded, setUsersExpanded] = useState(false);
   const [settings, setSettings] = useState<SettingsState>(loadSettings);
   const [saveStatus, setSaveStatus] = useState('');
-  const currentRole = getStoredUserRole() || role;
-  const canViewUsers = currentRole === 'admin' || currentRole === 'system_manager';
 
   useEffect(() => {
     const userId = getCurrentUserId();
@@ -159,22 +129,6 @@ export default function Settings() {
 
   return (
     <div className="set-page">
-      <AppHeader title="Settings" />
-      <div className="pf-header">
-        <button className="pf-back-btn" onClick={() => navigate(-1)} aria-label="Go back">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
-               stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-            <polyline points="15 18 9 12 15 6"/>
-          </svg>
-        </button>
-        <div className="pf-tab">Settings</div>
-        <button className="ah-hamburger" onClick={openSidebar} aria-label="Open menu">
-          <span />
-          <span />
-          <span />
-        </button>
-      </div>
-
       <div className="set-body">
         <div className="set-profile-row">
           <div className="set-pfp" aria-label="Profile picture">
@@ -190,44 +144,6 @@ export default function Settings() {
             <span className="set-profile-role">Settings</span>
           </div>
         </div>
-
-        {canViewUsers && (
-          <>
-            <button
-              className={`set-users-toggle ${usersExpanded ? 'set-users-toggle--open' : ''}`}
-              type="button"
-              onClick={() => setUsersExpanded(v => !v)}
-            >
-              <span>View list of all users</span>
-              <svg
-                className={`set-chevron ${usersExpanded ? 'set-chevron--rotated' : ''}`}
-                width="18" height="18" viewBox="0 0 24 24" fill="none"
-                stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <polyline points="6 9 12 15 18 9"/>
-              </svg>
-            </button>
-
-            {usersExpanded && (
-              <div className="set-user-list">
-                {MOCK_USERS.map(user => (
-                  <div key={user.id} className="set-user-row">
-                    <div className="set-user-pfp" aria-hidden="true">
-                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
-                           stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/>
-                        <circle cx="12" cy="7" r="4"/>
-                      </svg>
-                    </div>
-                    <span className="set-user-name">{user.name}</span>
-                    <span className="set-user-dot">-</span>
-                    <span className="set-user-role">{user.role}</span>
-                    <button className="set-report-btn" type="button">Report</button>
-                  </div>
-                ))}
-              </div>
-            )}
-          </>
-        )}
 
         <section className="set-section" aria-labelledby="settings-services">
           <div className="set-section-header">

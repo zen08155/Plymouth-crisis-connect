@@ -15,6 +15,11 @@ import {
   isIncidentUpcoming,
   type Incident,
 } from '../api/incidents';
+import {
+  getVolunteers,
+  promoteVolunteer,
+  type VolunteerAccount,
+} from '../api/systemManager';
 import { useToast } from '../context/ToastContext';
 
 export default function AdminDashboard() {
@@ -22,10 +27,13 @@ export default function AdminDashboard() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [submissions, setSubmissions] = useState<CertificateSubmission[]>([]);
   const [incidents, setIncidents] = useState<Incident[]>([]);
+  const [volunteers, setVolunteers] = useState<VolunteerAccount[]>([]);
+  const [volunteerSearch, setVolunteerSearch] = useState('');
   const [error, setError] = useState('');
   const [updatingId, setUpdatingId] = useState<number | null>(null);
   const [closingId, setClosingId] = useState<number | null>(null);
   const [openingId, setOpeningId] = useState<number | null>(null);
+  const [promotingId, setPromotingId] = useState<number | null>(null);
   const [filePreview, setFilePreview] = useState<{
     name: string;
     type: string;
@@ -36,14 +44,29 @@ export default function AdminDashboard() {
     id?: number;
     role?: string;
   } | null;
-  const activeTab = searchParams.get('tab') === 'submissions'
+  const requestedTab = searchParams.get('tab');
+  const activeTab = requestedTab === 'submissions'
     ? 'submissions'
-    : 'responses';
+    : requestedTab === 'volunteers' && currentUser?.role === 'system_manager'
+      ? 'volunteers'
+      : 'responses';
   const manageableIncidents = currentUser?.role === 'system_manager'
     ? incidents
     : incidents.filter(incident => incident.createdBy === currentUser?.id);
+  const normalizedVolunteerSearch = volunteerSearch.trim().toLowerCase();
+  const filteredVolunteers = normalizedVolunteerSearch
+    ? volunteers.filter(volunteer =>
+        [
+          volunteer.name,
+          volunteer.surname,
+          `${volunteer.name} ${volunteer.surname}`,
+          volunteer.email,
+          volunteer.status,
+        ].some(value => value.toLowerCase().includes(normalizedVolunteerSearch)),
+      )
+    : volunteers;
 
-  function selectTab(tab: 'responses' | 'submissions') {
+  function selectTab(tab: 'responses' | 'submissions' | 'volunteers') {
     setError('');
     setSearchParams({ tab }, { replace: true });
   }
@@ -64,9 +87,19 @@ export default function AdminDashboard() {
     }
   }
 
+  async function loadVolunteers() {
+    if (currentUser?.role !== 'system_manager') return;
+    try {
+      setVolunteers(await getVolunteers());
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : 'Unable to load volunteers.');
+    }
+  }
+
   useEffect(() => {
     loadSubmissions();
     loadIncidents();
+    loadVolunteers();
     const timer = window.setInterval(() => setNow(Date.now()), 1000);
     return () => window.clearInterval(timer);
   }, []);
@@ -151,19 +184,55 @@ export default function AdminDashboard() {
     }
   }
 
+  async function handlePromote(volunteer: VolunteerAccount) {
+    const confirmed = window.confirm(
+      `Promote ${volunteer.name} ${volunteer.surname} to coordinator?`,
+    );
+    if (!confirmed) return;
+
+    setError('');
+    setPromotingId(volunteer.id);
+    try {
+      const result = await promoteVolunteer(volunteer.id);
+      setVolunteers(current => current.filter(item => item.id !== volunteer.id));
+      toast.success(result.message);
+    } catch (caught) {
+      const message = caught instanceof Error ? caught.message : 'Unable to promote volunteer.';
+      setError(message);
+      toast.error(message);
+      await loadVolunteers();
+    } finally {
+      setPromotingId(null);
+    }
+  }
+
   return (
     <div className="adm-page">
-      <AppHeader title={activeTab === 'responses' ? 'Response management' : 'Submissions'} />
+      <AppHeader
+        title={
+          activeTab === 'responses'
+            ? 'Response management'
+            : activeTab === 'submissions'
+              ? 'Submissions'
+              : 'Volunteer roles'
+        }
+      />
       <main className="adm-body">
         <div>
           <span className="pf-eyebrow">Coordinator tools</span>
           <h1 className="adm-heading">
-            {activeTab === 'responses' ? 'Response management' : 'Submissions'}
+            {activeTab === 'responses'
+              ? 'Response management'
+              : activeTab === 'submissions'
+                ? 'Submissions'
+                : 'Volunteer roles'}
           </h1>
           <p className="adm-intro">
             {activeTab === 'responses'
               ? 'Review and end incidents that are no longer active.'
-              : 'Review volunteer certificate and qualification submissions.'}
+              : activeTab === 'submissions'
+                ? 'Review volunteer certificate and qualification submissions.'
+                : 'Promote active volunteers to coordinator accounts.'}
           </p>
         </div>
 
@@ -179,6 +248,22 @@ export default function AdminDashboard() {
           >
             Response management
           </button>
+          {currentUser?.role === 'system_manager' && (
+            <button
+              type="button"
+              role="tab"
+              id="volunteers-tab"
+              aria-controls="volunteers-panel"
+              aria-selected={activeTab === 'volunteers'}
+              className={`adm-tab ${activeTab === 'volunteers' ? 'adm-tab--active' : ''}`}
+              onClick={() => selectTab('volunteers')}
+            >
+              Volunteers
+              {volunteers.length > 0 && (
+                <span className="adm-tab-count">{volunteers.length}</span>
+              )}
+            </button>
+          )}
           <button
             type="button"
             role="tab"
@@ -308,6 +393,89 @@ export default function AdminDashboard() {
                       {submission.status}
                     </span>
                   )}
+                </article>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {activeTab === 'volunteers' && currentUser?.role === 'system_manager' && (
+          <section
+            id="volunteers-panel"
+            className="adm-section"
+            role="tabpanel"
+            aria-labelledby="volunteers-tab"
+          >
+            <div className="adm-section-heading">
+              <div>
+                <h2 className="adm-section-title">Active volunteers</h2>
+                <span className="adm-result-count">
+                  {filteredVolunteers.length} of {volunteers.length} volunteers
+                </span>
+              </div>
+              <label className="adm-search">
+                <svg
+                  width="18"
+                  height="18"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  aria-hidden="true"
+                >
+                  <circle cx="11" cy="11" r="7" />
+                  <path d="m20 20-4-4" />
+                </svg>
+                <input
+                  type="search"
+                  aria-label="Search volunteers"
+                  value={volunteerSearch}
+                  onChange={event => setVolunteerSearch(event.target.value)}
+                  placeholder="Search name or email"
+                />
+                {volunteerSearch && (
+                  <button
+                    type="button"
+                    onClick={() => setVolunteerSearch('')}
+                    aria-label="Clear volunteer search"
+                  >
+                    ×
+                  </button>
+                )}
+              </label>
+            </div>
+            <div className="adm-list">
+              {volunteers.length === 0 && (
+                <p className="cert-empty">No active volunteers available for promotion.</p>
+              )}
+              {volunteers.length > 0 && filteredVolunteers.length === 0 && (
+                <p className="cert-empty">
+                  No volunteers match “{volunteerSearch.trim()}”.
+                </p>
+              )}
+              {filteredVolunteers.map(volunteer => (
+                <article className="adm-row" key={volunteer.id}>
+                  <div className="adm-avatar" aria-hidden="true">
+                    {volunteer.name.charAt(0).toUpperCase()}
+                  </div>
+                  <div className="adm-row-info">
+                    <span className="adm-row-name">
+                      {volunteer.name} {volunteer.surname}
+                    </span>
+                    <span className="adm-row-skill">
+                      Volunteer · {volunteer.status}
+                    </span>
+                    <span className="adm-row-email">{volunteer.email}</span>
+                  </div>
+                  <button
+                    type="button"
+                    className="adm-btn adm-btn--promote"
+                    disabled={promotingId === volunteer.id}
+                    onClick={() => handlePromote(volunteer)}
+                  >
+                    {promotingId === volunteer.id ? 'Promoting...' : 'Promote to coordinator'}
+                  </button>
                 </article>
               ))}
             </div>

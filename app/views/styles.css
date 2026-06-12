@@ -3240,113 +3240,6 @@ h1 {
   color: rgba(230, 255, 250, 0.65);
 }
 
-.set-users-toggle {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  width: 100%;
-  padding: 14px 18px;
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(46, 196, 182, 0.18);
-  border-radius: 12px;
-  color: #E6FFFA;
-  font-size: 0.95rem;
-  font-weight: 600;
-  font-family: inherit;
-  cursor: pointer;
-  transition: background 0.15s;
-  text-align: left;
-}
-
-.set-users-toggle:hover {
-  background: rgba(46, 196, 182, 0.1);
-}
-
-.set-chevron {
-  transition: transform 0.2s ease;
-  color: rgba(230, 255, 250, 0.55);
-  flex-shrink: 0;
-}
-
-.set-chevron--rotated {
-  transform: rotate(180deg);
-}
-
-.set-user-list {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(46, 196, 182, 0.14);
-  border-radius: 12px;
-  padding: 10px 12px;
-}
-
-.set-user-row {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 10px 10px;
-  border-radius: 10px;
-  transition: background 0.15s;
-}
-
-.set-user-row:hover {
-  background: rgba(46, 196, 182, 0.07);
-}
-
-.set-user-pfp {
-  width: 34px;
-  height: 34px;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: rgba(230, 255, 250, 0.6);
-  flex-shrink: 0;
-}
-
-.set-user-name {
-  font-size: 0.9rem;
-  font-weight: 600;
-  color: #E6FFFA;
-  flex: 1;
-  min-width: 0;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.set-user-dot {
-  color: rgba(230, 255, 250, 0.35);
-}
-
-.set-user-role {
-  font-size: 0.85rem;
-  color: rgba(230, 255, 250, 0.55);
-  flex-shrink: 0;
-}
-
-.set-report-btn {
-  background: rgba(239, 68, 68, 0.12);
-  border: 1px solid rgba(239, 68, 68, 0.3);
-  border-radius: 50px;
-  padding: 6px 14px;
-  color: #f87171;
-  font-size: 0.82rem;
-  font-weight: 700;
-  font-family: inherit;
-  cursor: pointer;
-  transition: background 0.15s;
-  flex-shrink: 0;
-}
-
-.set-report-btn:hover {
-  background: rgba(239, 68, 68, 0.22);
-}
-
 .set-options-list {
   display: flex;
   flex-direction: column;
@@ -4531,6 +4424,75 @@ h1 {
   color: #E6FFFA;
 }
 
+.adm-section-heading {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 12px;
+}
+
+.adm-section-heading .adm-section-title {
+  margin-bottom: 3px;
+}
+
+.adm-result-count {
+  color: rgba(230, 255, 250, 0.42);
+  font-size: 0.75rem;
+}
+
+.adm-search {
+  display: flex;
+  width: min(320px, 100%);
+  min-height: 42px;
+  align-items: center;
+  gap: 9px;
+  padding: 0 11px;
+  border: 1px solid rgba(46, 196, 182, 0.2);
+  border-radius: 11px;
+  background: rgba(11, 19, 32, 0.72);
+  color: rgba(230, 255, 250, 0.48);
+}
+
+.adm-search:focus-within {
+  border-color: #2EC4B6;
+  box-shadow: 0 0 0 3px rgba(46, 196, 182, 0.1);
+}
+
+.adm-search input {
+  min-width: 0;
+  flex: 1;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: #E6FFFA;
+  font: inherit;
+  font-size: 0.85rem;
+}
+
+.adm-search input::placeholder {
+  color: rgba(230, 255, 250, 0.3);
+}
+
+.adm-search input::-webkit-search-cancel-button {
+  display: none;
+}
+
+.adm-search button {
+  display: grid;
+  width: 26px;
+  height: 26px;
+  flex-shrink: 0;
+  place-items: center;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(230, 255, 250, 0.08);
+  color: rgba(230, 255, 250, 0.72);
+  font: inherit;
+  font-size: 1rem;
+  cursor: pointer;
+}
+
 .adm-list {
   display: flex;
   flex-direction: column;
@@ -4614,6 +4576,17 @@ h1 {
   background: rgba(34, 197, 94, 0.18);
   border: 1px solid rgba(34, 197, 94, 0.4);
   color: #4ade80;
+}
+
+.adm-btn--promote {
+  flex-shrink: 0;
+  border: 1px solid rgba(59, 130, 246, 0.4);
+  background: rgba(59, 130, 246, 0.14);
+  color: #93c5fd;
+}
+
+.adm-btn--promote:hover:not(:disabled) {
+  background: rgba(59, 130, 246, 0.24);
 }
 
 .adm-btn--view {
@@ -4828,6 +4801,13 @@ h1 {
   .adm-tabs {
     align-items: stretch;
     flex-direction: column;
+  }
+  .adm-section-heading {
+    align-items: stretch;
+    flex-direction: column;
+  }
+  .adm-search {
+    width: 100%;
   }
   .adm-row {
     flex-wrap: wrap;

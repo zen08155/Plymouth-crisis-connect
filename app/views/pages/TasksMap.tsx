@@ -4,6 +4,7 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import AppHeader from '../components/AppHeader';
 import StatusBanner from '../components/StatusBanner';
+import { useApp } from '../context/AppContext';
 import {
   formatIncidentCountdown,
   getIncidents,
@@ -53,20 +54,16 @@ function createPinIcon(color: string, scheduled: boolean): L.DivIcon {
 
 export default function TasksMap() {
   const navigate = useNavigate();
-  const isCoordinator = (() => {
-    try {
-      return JSON.parse(localStorage.getItem('plymouth-user') ?? 'null')?.role === 'coordinator';
-    } catch {
-      return false;
-    }
-  })();
+  const { role: appRole } = useApp();
   const currentRole = (() => {
     try {
-      return JSON.parse(localStorage.getItem('plymouth-user') ?? 'null')?.role as string | undefined;
+      return JSON.parse(localStorage.getItem('plymouth-user') ?? 'null')?.role as string | undefined
+        ?? appRole;
     } catch {
-      return undefined;
+      return appRole;
     }
   })();
+  const isCoordinator = currentRole === 'coordinator';
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstance = useRef<L.Map | null>(null);
 
@@ -340,25 +337,23 @@ export default function TasksMap() {
             )}
           </div>
 
-          {currentRole === 'volunteer' && (
-            <label className={`tm2-eligibility-filter ${showEligibleOnly ? 'tm2-eligibility-filter--active' : ''}`}>
-              <input
-                type="checkbox"
-                checked={showEligibleOnly}
-                onChange={event => {
-                  setSelectedIncident(null);
-                  setShowEligibleOnly(event.target.checked);
-                }}
-              />
-              <span>
-                <strong>Tasks I can do now</strong>
-                <small>Available and certificate matched</small>
-              </span>
-              <span className="tm2-eligibility-switch" aria-hidden="true">
-                <span />
-              </span>
-            </label>
-          )}
+          <label className={`tm2-eligibility-filter ${showEligibleOnly ? 'tm2-eligibility-filter--active' : ''}`}>
+            <input
+              type="checkbox"
+              checked={showEligibleOnly}
+              onChange={event => {
+                setSelectedIncident(null);
+                setShowEligibleOnly(event.target.checked);
+              }}
+            />
+            <span>
+              <strong>Tasks I can do now</strong>
+              <small>Available and certificate matched</small>
+            </span>
+            <span className="tm2-eligibility-switch" aria-hidden="true">
+              <span />
+            </span>
+          </label>
 
           <div className="tm2-filter-section-heading">
             <h3 className="tm2-filter-title">Task type</h3>
