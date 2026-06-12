@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import AppHeader from '../components/AppHeader';
 import { useApp } from '../context/AppContext';
+import { useApp } from '../context/AppContext';
 
 interface User {
   id: number;
@@ -158,6 +159,20 @@ export default function Settings() {
   return (
     <div className="set-page">
       <AppHeader title="Settings" />
+      <div className="pf-header">
+        <button className="pf-back-btn" onClick={() => navigate(-1)} aria-label="Go back">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
+               stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="15 18 9 12 15 6"/>
+          </svg>
+        </button>
+        <div className="pf-tab">Settings</div>
+        <button className="ah-hamburger" onClick={openSidebar} aria-label="Open menu">
+          <span />
+          <span />
+          <span />
+        </button>
+      </div>
 
       <div className="set-body">
         <div className="set-profile-row">
