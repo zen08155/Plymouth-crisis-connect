@@ -267,7 +267,6 @@ export default function Settings() {
 
         {saveStatus && <p className="set-save-status" role="status">{saveStatus}</p>}
 
-        <button className="set-leave-btn" type="button">Leave the event</button>
       </div>
     </div>
   );

@@ -55,14 +55,27 @@ export default function Skills() {
   const [skillsSaved, setSkillsSaved] = useState(false);
   const [certificateType, setCertificateType] = useState<CertificateType>('First Aid');
   const [description, setDescription] = useState('');
-  const [fileName, setFileName] = useState('');
+  const [certificateFiles, setCertificateFiles] = useState<File[]>([]);
   const [certificates, setCertificates] = useState<Certificate[]>([]);
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const submittedTypes = new Set(certificates.map(certificate => certificate.type));
+  const availableCertificateTypes = CERTIFICATE_TYPES.filter(
+    type => !submittedTypes.has(type),
+  );
+  const allTypesSubmitted = availableCertificateTypes.length === 0;
 
   async function loadCertificates() {
     try {
-      setCertificates(await getMyCertificates());
+      const loadedCertificates = await getMyCertificates();
+      setCertificates(loadedCertificates);
+      setCertificateType(current =>
+        loadedCertificates.some(certificate => certificate.type === current)
+          ? CERTIFICATE_TYPES.find(
+              type => !loadedCertificates.some(certificate => certificate.type === type),
+            ) ?? current
+          : current,
+      );
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'Unable to load certificates.');
     }
@@ -89,8 +102,14 @@ export default function Skills() {
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!fileName) {
-      const message = 'Attach a certificate file before submitting.';
+    if (submittedTypes.has(certificateType)) {
+      const message = `You have already submitted a ${certificateType} certificate.`;
+      setError(message);
+      toast.error(message);
+      return;
+    }
+    if (certificateFiles.length === 0) {
+      const message = 'Attach at least one certificate file before submitting.';
       setError(message);
       toast.error(message);
       return;
@@ -99,13 +118,42 @@ export default function Skills() {
     setError('');
     setSubmitting(true);
     try {
+      const allowedTypes = [
+        'application/pdf',
+        'image/jpeg',
+        'image/png',
+        'image/gif',
+        'image/webp',
+      ] as const;
+      if (certificateFiles.length > 5) {
+        throw new Error('You can submit a maximum of 5 files.');
+      }
+      if (certificateFiles.some(file => !allowedTypes.some(type => type === file.type))) {
+        throw new Error('Upload a PDF, JPEG, PNG, GIF, or WebP file.');
+      }
+      if (certificateFiles.some(file => file.size > 5 * 1024 * 1024)) {
+        throw new Error('Each certificate file must be 5 MB or smaller.');
+      }
+      const files = await Promise.all(certificateFiles.map(async file => {
+        const fileData = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(String(reader.result).split(',', 2)[1] ?? '');
+          reader.onerror = () => reject(new Error(`Unable to read ${file.name}.`));
+          reader.readAsDataURL(file);
+        });
+        return {
+          file_name: file.name,
+          file_data: fileData,
+          mime_type: file.type as typeof allowedTypes[number],
+        };
+      }));
       await submitCertificate({
         certificate_type: certificateType,
         description: description.trim(),
-        file_name: fileName,
+        files,
       });
       setDescription('');
-      setFileName('');
+      setCertificateFiles([]);
       if (fileRef.current) fileRef.current.value = '';
       await loadCertificates();
       toast.success('Certificate submitted for review.');
@@ -181,11 +229,17 @@ export default function Skills() {
                 className="pf-input"
                 value={certificateType}
                 onChange={event => setCertificateType(event.target.value as CertificateType)}
+                disabled={allTypesSubmitted}
               >
                 {CERTIFICATE_TYPES.map(type => (
-                  <option key={type} value={type}>{type}</option>
+                  <option key={type} value={type} disabled={submittedTypes.has(type)}>
+                    {type}{submittedTypes.has(type) ? ' — already submitted' : ''}
+                  </option>
                 ))}
               </select>
+              <span className="pf-help">
+                Each certificate type can only be submitted once.
+              </span>
             </div>
 
             <div className="pf-field">
@@ -198,32 +252,46 @@ export default function Skills() {
                 placeholder="Course provider, qualification level, or relevant details"
                 minLength={3}
                 required
+                disabled={allTypesSubmitted}
               />
             </div>
 
             <div className="pf-field">
               <label className="pf-label" htmlFor="certificate-file">Certificate file</label>
-              <button
-                type="button"
-                className="cert-file-button"
-                onClick={() => fileRef.current?.click()}
-              >
-                <span>{fileName || 'Select PDF or image'}</span>
-                <strong>Browse</strong>
-              </button>
               <input
                 ref={fileRef}
                 id="certificate-file"
+                className="cert-file-input"
                 type="file"
                 accept=".pdf,image/*"
-                hidden
-                onChange={event => setFileName(event.target.files?.[0]?.name ?? '')}
+                multiple
+                disabled={allTypesSubmitted}
+                onChange={event => setCertificateFiles(Array.from(event.target.files ?? []))}
               />
+              <span className="pf-help">
+                Select up to 5 PDFs or images, maximum 5 MB per file.
+              </span>
+              {certificateFiles.length > 0 && (
+                <ul className="cert-selected-files">
+                  {certificateFiles.map(file => (
+                    <li key={`${file.name}-${file.lastModified}`}>{file.name}</li>
+                  ))}
+                </ul>
+              )}
             </div>
 
             {error && <p className="ci-error" role="alert">{error}</p>}
+            {allTypesSubmitted && (
+              <p className="cert-complete" role="status">
+                You have submitted every available certificate type.
+              </p>
+            )}
             <div className="pf-actions">
-              <button className="pf-save-btn" type="submit" disabled={submitting}>
+              <button
+                className="pf-save-btn"
+                type="submit"
+                disabled={submitting || allTypesSubmitted}
+              >
                 {submitting ? 'Submitting...' : 'Submit for review'}
               </button>
             </div>

@@ -61,6 +61,16 @@ CREATE TABLE IF NOT EXISTS skills (
   FOREIGN KEY (reviewedBy) REFERENCES users(userId)
 );
 
+CREATE TABLE IF NOT EXISTS certificateFiles (
+  certificateFileId INTEGER PRIMARY KEY AUTO_INCREMENT,
+  skillId INTEGER NOT NULL,
+  storedPath TEXT NOT NULL,
+  originalName VARCHAR(255) NOT NULL,
+  mimeType VARCHAR(100) NOT NULL,
+  createdAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (skillId) REFERENCES skills(skillId) ON DELETE CASCADE
+);
+
 
 CREATE TABLE IF NOT EXISTS team (
   teamId INTEGER PRIMARY KEY AUTO_INCREMENT,
@@ -153,6 +163,15 @@ CREATE TABLE IF NOT EXISTS volunteerSkills (
   INDEX idx_volunteer_skills_user (userId),
   FOREIGN KEY (skillId) REFERENCES skills(skillId),
   FOREIGN KEY (userId) REFERENCES users(userId)
+);
+
+CREATE TABLE IF NOT EXISTS certificateSubmissionTypes (
+  userId INTEGER NOT NULL,
+  certificateType VARCHAR(255) NOT NULL,
+  skillId INTEGER NOT NULL,
+  PRIMARY KEY (userId, certificateType),
+  FOREIGN KEY (userId) REFERENCES users(userId),
+  FOREIGN KEY (skillId) REFERENCES skills(skillId) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS volunteeringTeams (

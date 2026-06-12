@@ -28,3 +28,7 @@ __pycache__/
 .vscode/
 .idea/
 *.local
+
+# Locally uploaded certificate files
+uploads/*
+!uploads/.gitkeep

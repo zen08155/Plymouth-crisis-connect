@@ -14,8 +14,17 @@ export interface Certificate {
   type: CertificateType;
   description: string;
   fileName: string;
+  fileAvailable: boolean;
+  files: CertificateFile[];
   status: CertificateStatus;
   reviewedAt?: string | null;
+}
+
+export interface CertificateFile {
+  id: number;
+  name: string;
+  mimeType: string;
+  available: boolean;
 }
 
 export interface CertificateSubmission extends Certificate {
@@ -105,7 +114,11 @@ export function getMyCertificates(): Promise<Certificate[]> {
 export function submitCertificate(input: {
   certificate_type: CertificateType;
   description: string;
-  file_name: string;
+  files: Array<{
+    file_name: string;
+    file_data: string;
+    mime_type: 'application/pdf' | 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp';
+  }>;
 }): Promise<{ certificateId: number }> {
   return request<{ certificateId: number }>('/api/certificates', {
     method: 'POST',
@@ -114,6 +127,23 @@ export function submitCertificate(input: {
     clearMyCertificatesCache();
     return result;
   });
+}
+
+export async function getCertificateFile(
+  certificateId: number,
+  fileId: number,
+): Promise<Blob> {
+  const path = fileId === 0
+    ? `/api/certificate-submissions/${certificateId}/file`
+    : `/api/certificate-submissions/${certificateId}/files/${fileId}`;
+  const response = await fetch(path, {
+    headers: { Authorization: `Bearer ${storedToken()}` },
+  });
+  if (!response.ok) {
+    const payload = await response.json().catch(() => null);
+    throw new Error(payload?.detail || 'Unable to open certificate file.');
+  }
+  return response.blob();
 }
 
 export function getCertificateSubmissions(): Promise<CertificateSubmission[]> {

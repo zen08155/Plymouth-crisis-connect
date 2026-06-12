@@ -468,6 +468,15 @@ WHERE skills.description LIKE '%demonstration certificate'
     FROM volunteerSkills
     WHERE volunteerSkills.skillId = skills.skillId
       AND volunteerSkills.userId = users.userId
-);
+  );
+
+INSERT IGNORE INTO certificateSubmissionTypes (userId, certificateType, skillId)
+SELECT
+  volunteerSkills.userId,
+  skills.title,
+  volunteerSkills.skillId
+FROM volunteerSkills
+JOIN skills ON skills.skillId = volunteerSkills.skillId
+WHERE skills.skillType = 'certified';
 
 DROP TEMPORARY TABLE demo_incidents;
