@@ -35,12 +35,48 @@ export interface CertificateSubmission extends Certificate {
   };
 }
 
-function storedToken(): string {
+interface StoredUser {
+  id?: number;
+  token?: string;
+}
+
+let myCertificatesRequest: Promise<Certificate[]> | null = null;
+let myCertificatesCacheKey = '';
+
+function isTokenExpired(token: string): boolean {
+  try {
+    const [encodedPayload] = token.split('.');
+    const payload = JSON.parse(atob(encodedPayload.replace(/-/g, '+').replace(/_/g, '/'))) as {
+      exp?: number;
+    };
+    return typeof payload.exp === 'number' && payload.exp <= Math.floor(Date.now() / 1000);
+  } catch {
+    return false;
+  }
+}
+
+function storedUser(): StoredUser | null {
   const user = JSON.parse(localStorage.getItem('plymouth-user') ?? 'null') as {
+    id?: number;
     token?: string;
   } | null;
+  if (!user?.token) return null;
+  if (isTokenExpired(user.token)) {
+    localStorage.removeItem('plymouth-user');
+    return null;
+  }
+  return user;
+}
+
+function storedToken(): string {
+  const user = storedUser();
   if (!user?.token) throw new Error('Your session is missing. Please log in again.');
   return user.token;
+}
+
+function clearMyCertificatesCache(): void {
+  myCertificatesRequest = null;
+  myCertificatesCacheKey = '';
 }
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
@@ -60,7 +96,19 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
 }
 
 export function getMyCertificates(): Promise<Certificate[]> {
-  return request('/api/certificates/me');
+  const user = storedUser();
+  if (!user?.token) return Promise.resolve([]);
+
+  const cacheKey = `${user.id ?? 'unknown'}:${user.token}`;
+  if (!myCertificatesRequest || myCertificatesCacheKey !== cacheKey) {
+    myCertificatesCacheKey = cacheKey;
+    myCertificatesRequest = request<Certificate[]>('/api/certificates/me').catch(error => {
+      clearMyCertificatesCache();
+      throw error;
+    });
+  }
+
+  return myCertificatesRequest as Promise<Certificate[]>;
 }
 
 export function submitCertificate(input: {
@@ -72,9 +120,12 @@ export function submitCertificate(input: {
     mime_type: 'application/pdf' | 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp';
   }>;
 }): Promise<{ certificateId: number }> {
-  return request('/api/certificates', {
+  return request<{ certificateId: number }>('/api/certificates', {
     method: 'POST',
     body: JSON.stringify(input),
+  }).then(result => {
+    clearMyCertificatesCache();
+    return result;
   });
 }
 
@@ -103,9 +154,12 @@ export function reviewCertificate(
   certificateId: number,
   status: 'verified' | 'rejected',
 ): Promise<void> {
-  return request(`/api/certificate-submissions/${certificateId}`, {
+  return request<void>(`/api/certificate-submissions/${certificateId}`, {
     method: 'PATCH',
     body: JSON.stringify({ status }),
+  }).then(result => {
+    clearMyCertificatesCache();
+    return result;
   });
 }
 
