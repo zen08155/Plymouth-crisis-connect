@@ -23,7 +23,6 @@ export default function Login() {
   const registrationMessage = (
     location.state as { registrationMessage?: string } | null
   )?.registrationMessage;
-  const [showForm, setShowForm] = useState(Boolean(registrationMessage));
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -86,62 +85,47 @@ export default function Login() {
         </section>
 
         <section className="login-section">
-          <p className="login-heading">Already have an account? Log in</p>
           <div className="login-btn-group">
-            <button
-              type="button"
-              className="login-btn login-btn-yellow"
-              onClick={() => {
-                setShowForm(previous => !previous);
-                setError('');
-              }}
-              aria-expanded={showForm}
-            >
-              Log in with account
-            </button>
+            <form className="login-form" onSubmit={handleSubmit}>
+              {registrationMessage && (
+                <p className="login-success" role="status">{registrationMessage}</p>
+              )}
 
-            {showForm && (
-              <form className="login-form" onSubmit={handleSubmit}>
-                {registrationMessage && (
-                  <p className="login-success" role="status">{registrationMessage}</p>
-                )}
+              <div className="login-form-group">
+                <label htmlFor="login-email">Email address</label>
+                <input
+                  id="login-email"
+                  type="email"
+                  autoComplete="email"
+                  value={email}
+                  onChange={event => setEmail(event.target.value)}
+                  required
+                  autoFocus
+                />
+              </div>
 
-                <div className="login-form-group">
-                  <label htmlFor="login-email">Email address</label>
-                  <input
-                    id="login-email"
-                    type="email"
-                    autoComplete="email"
-                    value={email}
-                    onChange={event => setEmail(event.target.value)}
-                    required
-                    autoFocus
-                  />
-                </div>
+              <div className="login-form-group">
+                <label htmlFor="login-password">Password</label>
+                <input
+                  id="login-password"
+                  type="password"
+                  autoComplete="current-password"
+                  value={password}
+                  onChange={event => setPassword(event.target.value)}
+                  required
+                />
+              </div>
 
-                <div className="login-form-group">
-                  <label htmlFor="login-password">Password</label>
-                  <input
-                    id="login-password"
-                    type="password"
-                    autoComplete="current-password"
-                    value={password}
-                    onChange={event => setPassword(event.target.value)}
-                    required
-                  />
-                </div>
+              {error && <p className="login-error" role="alert">{error}</p>}
 
-                {error && <p className="login-error" role="alert">{error}</p>}
-
-                <button
-                  type="submit"
-                  className="login-btn login-btn-yellow"
-                  disabled={submitting}
-                >
-                  {submitting ? 'Logging in...' : 'Log in'}
-                </button>
-              </form>
-            )}
+              <button
+                type="submit"
+                className="login-btn login-btn-yellow"
+                disabled={submitting}
+              >
+                {submitting ? 'Logging in...' : 'Log in'}
+              </button>
+            </form>
 
             <button className="login-btn login-btn-white login-btn-icon" onClick={handleLogin}>
               <span className="login-icon-wrap">

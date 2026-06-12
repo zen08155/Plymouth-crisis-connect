@@ -30,8 +30,10 @@ services:
       DB_USER: root
       DB_PASSWORD: root
       AUTH_TOKEN_SECRET: local-docker-development-secret
+      CERTIFICATE_UPLOAD_DIR: /app/uploads/certificates
     volumes:
       - ./app:/app/app
+      - ./uploads:/app/uploads
     healthcheck:
       test:
         - CMD

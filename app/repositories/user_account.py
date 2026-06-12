@@ -223,7 +223,7 @@ class UserAccount:
         user_id: int,
         certificate_type: str,
         description: str,
-        file_name: str,
+        files: list[dict],
     ) -> int | None:
         conn = None
         cursor = None
@@ -242,21 +242,123 @@ class UserAccount:
                     certificate_type,
                     description,
                     description,
-                    file_name,
-                    file_name,
+                    files[0]["stored_path"],
+                    files[0]["original_name"],
                 ),
             )
             skill_id = cursor.lastrowid
+            cursor.executemany(
+                """
+                INSERT INTO certificateFiles (
+                    skillId, storedPath, originalName, mimeType
+                )
+                VALUES (%s, %s, %s, %s)
+                """,
+                [
+                    (
+                        skill_id,
+                        file["stored_path"],
+                        file["original_name"],
+                        file["mime_type"],
+                    )
+                    for file in files
+                ],
+            )
             cursor.execute(
                 "INSERT INTO volunteerSkills (skillId, userId) VALUES (%s, %s)",
                 (skill_id, user_id),
             )
+            cursor.execute(
+                """
+                INSERT INTO certificateSubmissionTypes (
+                    userId, certificateType, skillId
+                )
+                VALUES (%s, %s, %s)
+                """,
+                (user_id, certificate_type, skill_id),
+            )
             conn.commit()
             return skill_id
-        except Exception:
+        except Exception as error:
             if conn:
                 conn.rollback()
+            if getattr(error, "errno", None) == 1062:
+                raise ValueError("certificate_type_already_submitted") from error
             raise
+        finally:
+            if cursor:
+                cursor.close()
+            if conn:
+                conn.close()
+
+    def has_certificate_submission(self, user_id: int, certificate_type: str) -> bool:
+        conn = None
+        cursor = None
+        try:
+            conn = Database.get_connection()
+            cursor = conn.cursor()
+            cursor.execute(
+                """
+                SELECT 1
+                FROM certificateSubmissionTypes
+                WHERE userId = %s AND certificateType = %s
+                LIMIT 1
+                """,
+                (user_id, certificate_type),
+            )
+            return cursor.fetchone() is not None
+        finally:
+            if cursor:
+                cursor.close()
+            if conn:
+                conn.close()
+
+    def list_certificate_files(self, skill_id: int) -> list[dict]:
+        conn = None
+        cursor = None
+        try:
+            conn = Database.get_connection()
+            cursor = conn.cursor(dictionary=True)
+            cursor.execute(
+                """
+                SELECT certificateFileId, originalName, mimeType, storedPath
+                FROM certificateFiles
+                WHERE skillId = %s
+                ORDER BY certificateFileId
+                """,
+                (skill_id,),
+            )
+            return cursor.fetchall()
+        finally:
+            if cursor:
+                cursor.close()
+            if conn:
+                conn.close()
+
+    def get_certificate_attachment(self, skill_id: int, file_id: int) -> dict | None:
+        conn = None
+        cursor = None
+        try:
+            conn = Database.get_connection()
+            cursor = conn.cursor(dictionary=True)
+            cursor.execute(
+                """
+                SELECT certificateFiles.storedPath,
+                       certificateFiles.originalName,
+                       certificateFiles.mimeType,
+                       users.userId
+                FROM certificateFiles
+                JOIN volunteerSkills
+                  ON volunteerSkills.skillId = certificateFiles.skillId
+                JOIN users
+                  ON users.userId = volunteerSkills.userId
+                WHERE certificateFiles.skillId = %s
+                  AND certificateFiles.certificateFileId = %s
+                LIMIT 1
+                """,
+                (skill_id, file_id),
+            )
+            return cursor.fetchone()
         finally:
             if cursor:
                 cursor.close()
@@ -272,7 +374,8 @@ class UserAccount:
             cursor.execute(
                 """
                 SELECT skills.skillId, skills.title, skills.description,
-                       skills.certificateName, skills.verificationStatus,
+                       skills.proofOfCertificate, skills.certificateName,
+                       skills.verificationStatus,
                        skills.reviewedAt
                 FROM skills
                 JOIN volunteerSkills
@@ -298,7 +401,8 @@ class UserAccount:
             cursor.execute(
                 """
                 SELECT skills.skillId, skills.title, skills.description,
-                       skills.certificateName, skills.verificationStatus,
+                       skills.proofOfCertificate, skills.certificateName,
+                       skills.verificationStatus,
                        skills.reviewedAt, users.userId,
                        users.name, users.surname, users.email
                 FROM skills
@@ -315,6 +419,33 @@ class UserAccount:
                 """
             )
             return cursor.fetchall()
+        finally:
+            if cursor:
+                cursor.close()
+            if conn:
+                conn.close()
+
+    def get_certificate_file(self, skill_id: int) -> dict | None:
+        conn = None
+        cursor = None
+        try:
+            conn = Database.get_connection()
+            cursor = conn.cursor(dictionary=True)
+            cursor.execute(
+                """
+                SELECT skills.proofOfCertificate, skills.certificateName,
+                       users.userId
+                FROM skills
+                JOIN volunteerSkills
+                  ON volunteerSkills.skillId = skills.skillId
+                JOIN users
+                  ON users.userId = volunteerSkills.userId
+                WHERE skills.skillId = %s
+                LIMIT 1
+                """,
+                (skill_id,),
+            )
+            return cursor.fetchone()
         finally:
             if cursor:
                 cursor.close()
