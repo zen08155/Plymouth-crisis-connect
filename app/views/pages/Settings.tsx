@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import AppHeader from '../components/AppHeader';
-import { useApp } from '../context/AppContext';
 import { useApp } from '../context/AppContext';
 
 interface User {
@@ -73,7 +73,8 @@ function getStoredUserRole() {
 }
 
 export default function Settings() {
-  const { role } = useApp();
+  const navigate = useNavigate();
+  const { openSidebar, role } = useApp();
   const [usersExpanded, setUsersExpanded] = useState(false);
   const [settings, setSettings] = useState<SettingsState>(loadSettings);
   const [saveStatus, setSaveStatus] = useState('');
